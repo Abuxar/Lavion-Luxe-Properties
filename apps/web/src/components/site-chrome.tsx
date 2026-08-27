@@ -41,10 +41,10 @@ export function SiteHeader({ market }: { market?: Market }) {
             </Link>
           )}
           <Link
-            href={market ? `/${market}/guides` : "/uk/guides"}
-            className="label hidden border border-line px-4 py-2 transition-colors hover:border-brass hover:text-ink sm:block"
+            href={`/${market ?? "uk"}/submit`}
+            className="label border border-brass/50 bg-brass-wash px-4 py-2 !text-brass transition-colors hover:border-brass"
           >
-            Investor guides
+            List your property
           </Link>
         </div>
       </div>
@@ -94,8 +94,8 @@ export function SiteFooter({ market }: { market?: Market }) {
                 </Link>
               </li>
               <li>
-                <Link href={`/${active}/valuation`} className="text-ink-soft hover:text-brass">
-                  Request a valuation
+                <Link href={`/${active}/submit`} className="text-ink-soft hover:text-brass">
+                  List your property
                 </Link>
               </li>
             </ul>

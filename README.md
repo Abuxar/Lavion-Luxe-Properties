@@ -77,6 +77,7 @@ locally (it is gitignored) and set the same values in the Vercel dashboard.
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata, sitemap and robots |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud for the `next/image` loader |
 | `API_BASE_URL` | Backend origin. Unset in phase 1 — the sample fallback is used |
+| `ADMIN_PASSPHRASE` | Review-queue access, 8+ chars. **Unset seals the queue** |
 
 **API — later phase, not deployed yet**
 
@@ -88,6 +89,24 @@ locally (it is gitignored) and set the same values in the Vercel dashboard.
 | `CORS_ORIGINS` | Comma-separated allowed origins |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` | Auth signing keys |
 | `PERMIT_CHECK_INTERVAL_MS` | How often lapsed UAE permits are swept |
+
+## F06 — admin-gated submissions
+
+Public submission at `/[market]/submit`, review queue at `/admin`.
+
+The form is market-aware: a Dubai submission asks for the DLD permit (and, if
+off-plan, developer, escrow and completion date); a UK one asks for Material
+Information, with lease fields appearing only for leasehold; Pakistan asks for
+society approval. Each section says *why* it is needed, and the submitter is
+told at submit time what will hold the listing in review.
+
+Nothing self-publishes. `approveSubmission()` re-runs `evaluatePublishGates()`
+server-side, so a listing failing a blocking gate cannot be published even by a
+crafted request — the disabled button is the courtesy, not the control.
+
+`/admin` is `noindex`, disallowed in robots.txt, and never cached. Access is a
+single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
+closed**. This is a phase-1 placeholder, not the RBAC in the plan.
 
 ## Current phase
 

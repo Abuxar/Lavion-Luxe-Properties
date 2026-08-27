@@ -28,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  const submit: MetadataRoute.Sitemap = MARKETS_LIST.map((m) => ({
+    url: `${base}/${m}/submit`,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
   const properties: MetadataRoute.Sitemap = slugs.map(({ market, slug }) => ({
     url: `${base}/${market}/property/${slug}`,
     changeFrequency: "weekly",
@@ -38,6 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base, changeFrequency: "weekly", priority: 1 },
     ...roots,
     ...searches,
+    ...submit,
     ...properties,
   ];
 }

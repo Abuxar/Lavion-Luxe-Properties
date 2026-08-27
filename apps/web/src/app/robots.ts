@@ -10,7 +10,16 @@ export default function robots(): MetadataRoute.Robots {
         // Facet combinations beyond the defined taxonomy are never indexable —
         // this is the crawl-budget discipline that stops the programmatic
         // landing pages turning into mass thin content.
-        disallow: ["/api/", "/*?sort=", "/*?page=", "/*?minPrice=", "/*?maxPrice="],
+        disallow: [
+          "/admin",
+          "/admin/",
+          "/api/",
+          // Facet combinations beyond the taxonomy are never indexable.
+          "/*?sort=",
+          "/*?page=",
+          "/*?minPrice=",
+          "/*?maxPrice=",
+        ],
       },
     ],
     sitemap: `${base}/sitemap.xml`,
