@@ -35,11 +35,12 @@ Thumbs.db
 
 # ---------------------------------------------------------------
 # Secrets & credentials — never commit any of these.
-# .env.example is the ONLY env file in the repo and holds placeholders.
+# No env file of any kind belongs in this repo, template or otherwise.
+# The variable list lives in README.md instead.
 # ---------------------------------------------------------------
 .env
 .env.*
-!.env.example
+.env.example
 *.local
 
 # Private keys, certificates, keystores

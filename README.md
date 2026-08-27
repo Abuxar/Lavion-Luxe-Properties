@@ -65,6 +65,30 @@ Flex bursts to roughly 500 ops/sec, so `GET /metrics` exposes a live ops/sec
 sample — that number is the M10 migration trigger. Application logs go to disk,
 never to Mongo, to protect the ~5 GB storage ceiling.
 
+## Environment variables
+
+No env file is committed to this repo — not even a template. Create `.env`
+locally (it is gitignored) and set the same values in the Vercel dashboard.
+
+**Web — needed now**
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata, sitemap and robots |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud for the `next/image` loader |
+| `API_BASE_URL` | Backend origin. Unset in phase 1 — the sample fallback is used |
+
+**API — later phase, not deployed yet**
+
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | Atlas connection string |
+| `MONGO_MAX_POOL` | Pool cap. Keep conservative (10) against a shared tier |
+| `PORT` / `NODE_ENV` / `LOG_LEVEL` | Runtime basics |
+| `CORS_ORIGINS` | Comma-separated allowed origins |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Auth signing keys |
+| `PERMIT_CHECK_INTERVAL_MS` | How often lapsed UAE permits are swept |
+
 ## Current phase
 
 **Phase 1 — frontend only.** The site is live and runs with **no backend**:
