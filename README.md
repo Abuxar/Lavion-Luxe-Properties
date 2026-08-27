@@ -13,7 +13,7 @@ Implementation plan: [Lavion Luxe Build Plan](https://claude.ai/code/artifact/1d
 | API | Node 24, Express 5, Mongoose |
 | Data | MongoDB Atlas Flex |
 | Media | Cloudinary via a custom `next/image` loader |
-| Hosting | Vercel (web) · Hostinger KVM4 (API, Docker) |
+| Hosting | Vercel (web) · Hostinger KVM4 (API, later phase) |
 
 ## Layout
 
@@ -65,21 +65,56 @@ Flex bursts to roughly 500 ops/sec, so `GET /metrics` exposes a live ops/sec
 sample — that number is the M10 migration trigger. Application logs go to disk,
 never to Mongo, to protect the ~5 GB storage ceiling.
 
+## Current phase
+
+**Phase 1 — frontend only.** The site is live and runs with **no backend**:
+`apps/web` falls back to a built-in sample inventory whenever the API is
+unreachable, so every page renders without a database.
+
+Live: **https://lavion-luxe-properties.vercel.app** — one Vercel project,
+Root Directory `apps/web`, auto-deploying on push to `main`.
+
+| | Now | Later |
+|---|---|---|
+| Hosting | Vercel Hobby | Vercel Pro |
+| Data | none (sample fallback) | Atlas free (M0) → Atlas Flex |
+| API | none | Route Handlers on Vercel → Express on KVM4 |
+
+`apps/api` is written and typechecks, but is **not deployed**. It is the
+KVM4 target for a later phase.
+
+### Wiring up data when Atlas arrives
+
+`src/lib/listings.ts` is the only file that needs to change. It already has
+the fallback seam — point `getListings()` / `getListing()` at Next.js Route
+Handlers under `src/app/api/`, and keep the `use cache` + `cacheLife` wrappers
+as they are.
+
+On Atlas free (M0), cache the Mongo client at module scope and reuse it across
+invocations rather than connecting per request — M0 is shared and connection
+limited, and Fluid Compute reuses function instances, so a module-level client
+is the right pattern.
+
 ## Deploying
 
-**Web** → Vercel. Set `API_BASE_URL`, `NEXT_PUBLIC_SITE_URL`,
-`NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`. Pin the function region close to the KVM4
-region; every SSR request crosses that link.
+Push to `main` — Vercel builds and deploys automatically.
 
-**API** → KVM4:
+```bash
+vercel deploy --prod --scope abuxar   # manual production deploy
+```
+
+The build compiles `@lavion/schema` first (see `apps/web` build script), so the
+deploy is self-contained from Root Directory `apps/web`.
+
+**When the API moves to KVM4:**
 
 ```bash
 docker compose up -d --build
 ```
 
-Container CPU and memory limits are set in `docker-compose.yml` and are not
-optional — KVM4 hosts other projects, and a spike here must not starve them.
-Docker owns supervision; there is no PM2 inside the container.
+Container CPU and memory limits in `docker-compose.yml` are not optional — KVM4
+hosts other projects, and a spike here must not starve them. Docker owns
+supervision; there is no PM2 inside the container.
 
 ## Not legal advice
 
