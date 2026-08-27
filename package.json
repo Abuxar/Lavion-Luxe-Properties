@@ -1,0 +1,17 @@
+{
+  "name": "lavion-luxe",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.5",
+    "typescript": "^5.9.2"
+  },
+  "engines": { "node": ">=20" }
+}

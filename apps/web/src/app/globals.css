@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/**
+ * Lavion Luxe design system.
+ *
+ * Direction: architectural, not country-house. Petrol ink and limestone with
+ * antique brass as the single accent — muted rather than plated, so it reads
+ * as considered on a UK townhouse, a Dubai tower and a Lahore villa alike.
+ * Brass hairlines are the connective device throughout.
+ */
+
+@theme {
+  /* type */
+  --font-display: var(--font-bodoni), "Didot", "Bodoni MT", Georgia, serif;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, Menlo, monospace;
+
+  /* light: limestone + petrol ink */
+  --color-paper: #f1efea;
+  --color-surface: #f9f8f5;
+  --color-surface-2: #e6e3db;
+  --color-ink: #0f1d1f;
+  --color-ink-soft: #4a5654;
+  --color-ink-faint: #7d8785;
+  --color-line: #d8d4ca;
+  --color-line-strong: #bab5a8;
+
+  --color-brass: #8c6a32;
+  --color-brass-soft: #b8945a;
+  --color-brass-wash: #ece4d3;
+
+  --color-petrol: #2b5d5b;
+  --color-petrol-wash: #dfe9e7;
+
+  --color-signal: #8c3a2f;
+  --color-signal-wash: #f0e0dc;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* dark — same roles, re-tuned. Brass brightens; petrol becomes the ground. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-paper: #0b1416;
+    --color-surface: #111d1f;
+    --color-surface-2: #182729;
+    --color-ink: #e9e6de;
+    --color-ink-soft: #a3aeac;
+    --color-ink-faint: #7a8583;
+    --color-line: #223234;
+    --color-line-strong: #33474a;
+
+    --color-brass: #c9a15c;
+    --color-brass-soft: #9c7f47;
+    --color-brass-wash: #241c0f;
+
+    --color-petrol: #5e9b96;
+    --color-petrol-wash: #122a29;
+
+    --color-signal: #d08476;
+    --color-signal-wash: #2b1512;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-paper: #0b1416;
+  --color-surface: #111d1f;
+  --color-surface-2: #182729;
+  --color-ink: #e9e6de;
+  --color-ink-soft: #a3aeac;
+  --color-ink-faint: #7a8583;
+  --color-line: #223234;
+  --color-line-strong: #33474a;
+
+  --color-brass: #c9a15c;
+  --color-brass-soft: #9c7f47;
+  --color-brass-wash: #241c0f;
+
+  --color-petrol: #5e9b96;
+  --color-petrol-wash: #122a29;
+
+  --color-signal: #d08476;
+  --color-signal-wash: #2b1512;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* Explicit ground: the artifact/host paints its own theme behind us. */
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Prices, areas and bedroom counts sit in columns — they must line up. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Uppercase micro-label used for eyebrows, chips and data keys. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .hairline {
+    border-color: var(--color-line);
+  }
+
+  /* The brass rule — the connective device across every surface. */
+  .rule-brass {
+    background: linear-gradient(
+      90deg,
+      var(--color-brass) 0%,
+      color-mix(in srgb, var(--color-brass) 25%, transparent) 60%,
+      transparent 100%
+    );
+    height: 1px;
+  }
+}
+
+/* Reveal-on-scroll. Elements start hidden ONLY when JS will animate them —
+   `.reveal` is added by the motion provider, so no-JS users see content. */
+.js-motion [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .js-motion [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
