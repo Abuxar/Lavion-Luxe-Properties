@@ -1,4 +1,4 @@
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { toSqft, type Market } from "@lavion/schema";
 
 /**
@@ -200,6 +200,9 @@ export async function getListings(
 ): Promise<ListingSummary[]> {
   "use cache";
   cacheLife("search");
+  // Tagged so publishing from the admin queue invalidates these immediately
+  // rather than leaving a new listing invisible for the cache window.
+  cacheTag("listings");
   try {
     const url = new URL("/api/listings", API);
     url.searchParams.set("market", market);
@@ -212,9 +215,43 @@ export async function getListings(
     if (Array.isArray(data.items) && data.items.length) return data.items;
     throw new Error("empty");
   } catch {
-    const items = SAMPLE.filter((l) => l.market === market);
+    const items = [...(await adminPublished(market)), ...SAMPLE.filter((l) => l.market === market)];
     return opts.limit ? items.slice(0, opts.limit) : items;
   }
+}
+
+/**
+ * Listings published from the admin queue. Merged ahead of the seed set so a
+ * newly published property appears first. Goes away when Atlas lands — this is
+ * the same data the API will serve.
+ */
+async function adminPublished(market: Market): Promise<ListingSummary[]> {
+  const { publishedListings } = await import("./submissions");
+  const rows = await publishedListings(market);
+  return rows.map((l) => ({
+    slug: l.slug,
+    title: l.title,
+    market: l.market,
+    status: l.status,
+    transaction: l.transaction,
+    category: l.category,
+    offPlan: l.offPlan,
+    price: { amount: l.price.amount, currency: l.price.currency, qualifier: l.price.qualifier },
+    area: { canonicalSqft: l.area.canonicalSqft },
+    bedrooms: l.bedrooms,
+    bathrooms: l.bathrooms,
+    tenure: l.tenure,
+    location: {
+      locality: l.location.locality,
+      city: l.location.city,
+      freeholdZone: l.location.freeholdZone,
+    },
+    media: l.media.map((m) => ({ cloudinaryId: m.cloudinaryId, alt: m.alt })),
+    publishedAt: l.publishedAt ? new Date(l.publishedAt).toISOString() : undefined,
+    description: l.description,
+    amenities: l.amenities,
+    compliance: l.compliance as Record<string, Record<string, unknown>>,
+  })) as ListingSummary[];
 }
 
 export async function getListing(
@@ -223,6 +260,7 @@ export async function getListing(
 ): Promise<ListingDetail | null> {
   "use cache";
   cacheLife("listing");
+  cacheTag("listings", `listing:${market}:${slug}`);
   try {
     const res = await fetch(`${API}/api/listings/${market}/${slug}`);
     if (!res.ok) throw new Error(`api ${res.status}`);
@@ -230,12 +268,20 @@ export async function getListing(
     if (data.listing) return data.listing;
     throw new Error("empty");
   } catch {
-    return SAMPLE.find((l) => l.market === market && l.slug === slug) ?? null;
+    const admin = (await adminPublished(market)) as unknown as ListingDetail[];
+    return (
+      admin.find((l) => l.slug === slug) ??
+      SAMPLE.find((l) => l.market === market && l.slug === slug) ??
+      null
+    );
   }
 }
 
 export async function getAllSlugs(): Promise<{ market: Market; slug: string }[]> {
   "use cache";
   cacheLife("listing");
+  cacheTag("listings");
   return SAMPLE.map((l) => ({ market: l.market, slug: l.slug }));
 }
+
+export { adminPublished };

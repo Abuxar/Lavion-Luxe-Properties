@@ -104,6 +104,28 @@ Nothing self-publishes. `approveSubmission()` re-runs `evaluatePublishGates()`
 server-side, so a listing failing a blocking gate cannot be published even by a
 crafted request — the disabled button is the courtesy, not the control.
 
+### Admin-entered listings
+
+`/admin/new` publishes directly to any of the three markets — full details,
+location (with optional lat/lng), amenities and images. Images are URLs, one
+per line; the `next/image` loader passes absolute URLs and local paths through
+and prefixes bare Cloudinary IDs, so the same field keeps working once
+Cloudinary is connected. Admin entries go through the identical Zod schema and
+the identical publish gate as agency submissions.
+
+### Compliance override
+
+A blocked listing can be published anyway, from either the review page or the
+create form. It requires an explicit tick plus a written reason, checked
+server-side — a bypass cannot happen from a stray click or a replayed request.
+
+Overriding does **not** make an advert lawful. A Dubai listing published
+without a live DLD permit is still a RERA violation. The override exists so a
+bypass is attributable and, above all, findable: `complianceOverride` records
+who, why, when, and exactly which gate codes were skipped. Overridden listings
+are counted on the queue, badged in the list, and flagged on the review page —
+use `overriddenListings()` as the cleanup list before going live.
+
 `/admin` is `noindex`, disallowed in robots.txt, and never cached. Access is a
 single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
 closed**. This is a phase-1 placeholder, not the RBAC in the plan.

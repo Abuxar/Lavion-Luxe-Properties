@@ -2,6 +2,7 @@ import "server-only";
 import {
   evaluatePublishGates,
   toSqft,
+  type ComplianceOverride,
   type GateResult,
   type ListingInput,
   type Market,
@@ -280,20 +281,96 @@ export async function createSubmission(input: {
  */
 export async function approveSubmission(
   id: string,
+  override?: { by: string; reason: string },
 ): Promise<{ ok: true; submission: SubmissionWithGates } | { ok: false; gates: GateResult }> {
   const s = store.get(id);
   if (!s) throw new Error("submission not found");
 
   const gates = evaluatePublishGates(s.listing);
-  if (!gates.canPublish) return { ok: false, gates };
+
+  // Without an explicit override the gate is absolute.
+  if (!gates.canPublish && !override) return { ok: false, gates };
+
+  const bypassed = gates.failures
+    .filter((f) => f.severity === "blocking")
+    .map((f) => f.code);
+
+  const record: ComplianceOverride | undefined =
+    override && bypassed.length
+      ? { by: override.by, reason: override.reason, at: new Date(), bypassed }
+      : undefined;
 
   const updated: Submission = {
     ...s,
     status: "approved",
-    listing: { ...s.listing, status: "published", publishedAt: new Date() },
+    listing: {
+      ...s.listing,
+      status: "published",
+      publishedAt: new Date(),
+      ...(record ? { complianceOverride: record } : {}),
+    },
   };
   store.set(id, updated);
   return { ok: true, submission: withGates(updated) };
+}
+
+/**
+ * Admin-entered listing (source: admin_entry). Skips the submitter round-trip
+ * but NOT the gate — an admin entry for Dubai still needs its permit unless
+ * the same override is used, and the override is recorded identically.
+ */
+export async function createAdminListing(input: {
+  listing: ListingInput;
+  by: string;
+  publishNow: boolean;
+  override?: { reason: string };
+}): Promise<{ submission: SubmissionWithGates; published: boolean; gates: GateResult }> {
+  counter += 1;
+  const id = `sub_${String(counter).padStart(2, "0")}`;
+  const gates = evaluatePublishGates(input.listing);
+
+  const canPublish = input.publishNow && (gates.canPublish || !!input.override);
+  const bypassed = gates.failures.filter((f) => f.severity === "blocking").map((f) => f.code);
+
+  const record: ComplianceOverride | undefined =
+    input.override && bypassed.length && canPublish
+      ? { by: input.by, reason: input.override.reason, at: new Date(), bypassed }
+      : undefined;
+
+  const submission: Submission = {
+    id,
+    submittedAt: new Date().toISOString(),
+    submitterName: input.by,
+    submitterEmail: "—",
+    status: canPublish ? "approved" : "pending_review",
+    listing: {
+      ...input.listing,
+      source: "admin_entry",
+      status: canPublish ? "published" : "pending_review",
+      ...(canPublish ? { publishedAt: new Date() } : {}),
+      ...(record ? { complianceOverride: record } : {}),
+      priceHistory: [{ amount: input.listing.price.amount, at: new Date() }],
+    },
+  };
+
+  store.set(id, submission);
+  return { submission: withGates(submission), published: canPublish, gates };
+}
+
+/**
+ * Published listings from the store, for the public site to merge with its
+ * seed inventory. Replaced by an Atlas query when the database lands.
+ */
+export async function publishedListings(market?: Market): Promise<ListingInput[]> {
+  return [...store.values()]
+    .filter((s) => s.status === "approved" && s.listing.status === "published")
+    .filter((s) => !market || s.listing.market === market)
+    .map((s) => s.listing);
+}
+
+/** Overridden listings — the cleanup list. */
+export async function overriddenListings(): Promise<Submission[]> {
+  return [...store.values()].filter((s) => s.listing.complianceOverride);
 }
 
 export async function rejectSubmission(id: string, note: string): Promise<SubmissionWithGates> {
@@ -311,6 +388,7 @@ export async function rejectSubmission(id: string, note: string): Promise<Submis
 
 export async function queueCounts() {
   const all = [...store.values()];
+  const overridden = all.filter((s) => s.listing.complianceOverride).length;
   const pending = all.filter((s) => s.status === "pending_review");
   const blocked = pending.filter((s) => !evaluatePublishGates(s.listing).canPublish);
   return {
@@ -319,5 +397,6 @@ export async function queueCounts() {
     readyToPublish: pending.length - blocked.length,
     approved: all.filter((s) => s.status === "approved").length,
     rejected: all.filter((s) => s.status === "rejected").length,
+    overridden,
   };
 }

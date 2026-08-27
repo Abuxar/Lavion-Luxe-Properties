@@ -35,18 +35,29 @@ async function Queue() {
           <p className="label">Admin</p>
           <h1 className="mt-3 font-display text-4xl">Review queue</h1>
         </div>
+        <div className="flex items-center gap-2">
+        <Link
+          href="/admin/new"
+          className="label border border-brass/50 bg-brass-wash px-4 py-2 !text-brass transition-colors hover:border-brass"
+        >
+          + Add property
+        </Link>
         <form action={signOutAction}>
           <button type="submit" className="label border border-line px-4 py-2 hover:border-brass">
             Sign out
           </button>
         </form>
+        </div>
       </div>
 
-      <dl className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-4">
+      <dl className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-4 lg:grid-cols-5">
         <Count k="Awaiting review" v={counts.pending} />
         <Count k="Ready to publish" v={counts.readyToPublish} accent />
         <Count k="Blocked" v={counts.blocked} signal={counts.blocked > 0} />
         <Count k="Published" v={counts.approved} />
+        {counts.overridden > 0 && (
+          <Count k="Overridden" v={counts.overridden} signal />
+        )}
       </dl>
 
       <section className="mt-12">
@@ -97,6 +108,18 @@ async function Queue() {
               <li key={s.id} className="flex flex-wrap items-center gap-4 bg-paper p-5">
                 <span className="label w-16 shrink-0">{s.listing.market.toUpperCase()}</span>
                 <span className="min-w-[240px] flex-1 text-sm">{s.listing.title}</span>
+                {s.listing.complianceOverride && (
+                  <span
+                    className="label border px-2 py-1"
+                    style={{
+                      color: "var(--color-signal)",
+                      borderColor: "color-mix(in srgb, var(--color-signal) 40%, transparent)",
+                      background: "var(--color-signal-wash)",
+                    }}
+                  >
+                    Override
+                  </span>
+                )}
                 <span
                   className="label"
                   style={{
@@ -155,7 +178,7 @@ function QueueSkeleton() {
   return (
     <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-12" aria-hidden>
       <div className="h-10 w-52 animate-pulse bg-surface-2" />
-      <div className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-4">
+      <div className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-4 lg:grid-cols-5">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="bg-paper p-5">
             <div className="h-3 w-24 animate-pulse bg-surface-2" />

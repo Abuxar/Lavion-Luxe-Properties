@@ -28,6 +28,7 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
   const m = l.market as Market;
   const blocked = !sub.gates.canPublish;
   const decided = sub.status !== "pending_review";
+  const ov = sub.listing.complianceOverride;
 
   return (
     <main className="mx-auto w-full max-w-[1200px] flex-1 px-6 py-12">
@@ -80,6 +81,31 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
             <h2 className="label mb-3">Publish gate</h2>
             <GateReport gates={sub.gates} />
           </div>
+
+          {ov && (
+            <div className="border border-signal/50 bg-signal-wash p-5">
+              <p className="label" style={{ color: "var(--color-signal)" }}>
+                Published via override
+              </p>
+              <p className="mt-3 text-sm">
+                <strong>{ov.by}</strong> bypassed {ov.bypassed.length} blocking{" "}
+                {ov.bypassed.length === 1 ? "rule" : "rules"} on{" "}
+                {new Date(ov.at).toISOString().slice(0, 10)}.
+              </p>
+              <p className="mt-2 text-sm text-ink-soft">Reason: {ov.reason}</p>
+              <ul className="mt-3 flex flex-col gap-1">
+                {ov.bypassed.map((c) => (
+                  <li key={c} className="label !normal-case !tracking-normal">
+                    <code className="text-[11px]">{c}</code>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+                This advert does not meet its market&rsquo;s disclosure rules.
+                Resolve the items above and republish.
+              </p>
+            </div>
+          )}
 
           {decided ? (
             <div className="border border-line bg-surface p-5">

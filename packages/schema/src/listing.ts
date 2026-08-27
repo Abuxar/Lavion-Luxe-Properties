@@ -120,6 +120,24 @@ export const Compliance = z.object({
   pk: PkCompliance.optional(),
 });
 
+/**
+ * Record of a deliberate bypass of a blocking publish gate.
+ *
+ * Overriding does NOT make the advert lawful — a Dubai listing published
+ * without a live DLD permit is still a RERA violation. This exists so that a
+ * bypass is attributable and, above all, FINDABLE: every overridden listing
+ * carries the failures it skipped, so test data can be located and cleaned up
+ * rather than sitting indistinguishable from compliant inventory.
+ */
+export const ComplianceOverride = z.object({
+  by: z.string().min(1),
+  reason: z.string().min(1),
+  at: z.coerce.date(),
+  /** Gate codes that were bypassed, kept verbatim. */
+  bypassed: z.array(z.string()),
+});
+export type ComplianceOverride = z.infer<typeof ComplianceOverride>;
+
 /** Computed from ComplianceRule data — never authored per listing. */
 export const ForeignOwnership = z.object({
   eligible: z.boolean(),
@@ -163,6 +181,7 @@ export const ListingInput = z.object({
   media: z.array(MediaItem).default([]),
 
   compliance: Compliance.default({}),
+  complianceOverride: ComplianceOverride.optional(),
   foreignOwnership: ForeignOwnership.optional(),
 
   priceHistory: z.array(PricePoint).default([]),
