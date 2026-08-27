@@ -37,6 +37,23 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // The review queue renders authenticated content and can publish
+        // listings. Vercel does vary its cache on the auth cookie, but an
+        // admin surface must not depend on that heuristic — state it.
+        source: "/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/admin",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
