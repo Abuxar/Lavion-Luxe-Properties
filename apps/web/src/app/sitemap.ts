@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { MARKETS, type Market } from "@lavion/schema";
 import { getAreaGuide, getAreaTaxonomy } from "@/lib/areas";
+import { allGuideParams } from "@/lib/guides";
 import { getAllSlugs } from "@/lib/listings";
 
 const MARKETS_LIST: Market[] = ["uk", "ae", "pk"];
@@ -57,6 +58,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  const guidePages: MetadataRoute.Sitemap = [
+    ...MARKETS_LIST.map((m) => ({
+      url: `${base}/${m}/guides`,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+    ...(await allGuideParams()).map((g) => ({
+      url: `${base}/${g.market}/guides/${g.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.65,
+    })),
+  ];
+
   const properties: MetadataRoute.Sitemap = slugs.map(({ market, slug }) => ({
     url: `${base}/${market}/property/${slug}`,
     changeFrequency: "weekly",
@@ -68,6 +82,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...roots,
     ...searches,
     ...guides,
+    ...guidePages,
     ...submit,
     ...properties,
   ];

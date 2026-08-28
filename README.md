@@ -152,6 +152,27 @@ use `overriddenListings()` as the cleanup list before going live.
 single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
 closed**. This is a phase-1 placeholder, not the RBAC in the plan.
 
+## F04 / F05 / F10 — the investor layer
+
+`/[market]/guides` and `/[market]/guides/[slug]`. Six guides, two per market.
+
+**Guides render from rule data, not from prose.** A guide is editorial framing
+wrapped around one or more `ComplianceRule` records, so when the Golden Visa
+threshold or a UK surcharge moves you edit one record and every guide citing it
+updates. Each rule renders its **source authority (linked), the date it came
+into force, and the date it was last reviewed** — and a guide past its review
+interval says so on the page. Undated legal content is worse than none.
+
+**F04 makes the rule computable.** The Golden Visa guide does not just describe
+the AED 2M threshold — it queries live inventory for freehold listings in a
+designated zone at or above it, and shows them. The same predicate powers
+`/ae/search?goldenVisaEligible=true`. Verified it discriminates: 2 of 2 AE
+listings qualify, 0 of 2 UK and 0 of 3 PK.
+
+Every guide carries a disclaimer naming the right professional per
+jurisdiction. The content explains how rules work; it does not recommend
+investments, which is where regulated advice begins.
+
 ## F03 — area guides (programmatic SEO)
 
 `/[market]/for-sale/[city]` and `/[market]/for-sale/[city]/[locality]`, derived
