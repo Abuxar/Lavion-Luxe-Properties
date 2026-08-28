@@ -152,6 +152,48 @@ use `overriddenListings()` as the cleanup list before going live.
 single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
 closed**. This is a phase-1 placeholder, not the RBAC in the plan.
 
+## F03 — area guides (programmatic SEO)
+
+`/[market]/for-sale/[city]` and `/[market]/for-sale/[city]/[locality]`, derived
+from live inventory rather than a hand-maintained list. Each guide carries real
+substance — matching listings, price statistics computed from them (median,
+range, median per sq ft), available types, and an internal link mesh to sibling
+areas, the parent city and the market guide.
+
+### Indexability threshold — the crawl-budget rule
+
+The same generator that creates the growth engine can create thousands of
+near-empty URLs, and index bloat is the most common way a new portal's SEO
+stalls. So a guide **earns** indexation:
+
+```
+MIN_LISTINGS_FOR_INDEX = 2   // src/lib/areas.ts — raise as supply grows
+```
+
+Below the threshold a guide still renders and is still crawled, but is marked
+`noindex, follow` so links keep propagating while the thin page stays out of
+the index. **The sitemap is driven by the same flag** — submitting a URL that
+carries `noindex` wastes crawl budget and sends a contradictory signal.
+
+The number is deliberately low for the seed inventory. A real portal wants it
+around 5–10; review it rather than leaving it at whatever made the demo look
+full.
+
+### hreflang
+
+Set at launch, not retrofitted — three market sections sharing one language is
+exactly the configuration that gets miscrawled, and it is very hard to unwind
+after Google has indexed a broken structure. Codes come from `MARKETS[m].locale`
+so they are real BCP-47: **`en-GB`, not `en-UK`** — the UK's region subtag is
+GB, and an invalid hreflang is silently ignored.
+
+### Sold and let listings
+
+A listing page that has accumulated rankings for months is an asset. It keeps
+its URL, is badged sold or let, and surfaces live alternatives scored by
+locality, city and bed count — rather than 404ing and throwing the authority
+away. "What did this sell for" is high-intent traffic competitors discard.
+
 ## Current phase
 
 **Phase 1 — frontend only.** The site is live and runs with **no backend**:

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MARKETS, type Market } from "@lavion/schema";
@@ -5,11 +6,35 @@ import { MotionProvider } from "@/components/motion-provider";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getListings } from "@/lib/listings";
+import { getAreaTaxonomy } from "@/lib/areas";
 
 const VALID: Market[] = ["uk", "ae", "pk"];
 
 export function generateStaticParams() {
   return VALID.map((market) => ({ market }));
+}
+
+/**
+ * Three market sections sharing one language is exactly the configuration that
+ * gets miscrawled, so hreflang is set at launch rather than retrofitted after
+ * Google has indexed a broken structure. x-default points at the chooser.
+ */
+export async function generateMetadata({ params }: PageProps<"/[market]">) {
+  const { market } = await params;
+  const label = MARKETS[market as Market]?.label ?? "";
+  return {
+    title: `Luxury property in ${label}`,
+    description: `Luxury property for sale and rent across ${label}, with ownership and residency rules made explicit before you enquire.`,
+    alternates: {
+      canonical: `/${market}`,
+      languages: Object.fromEntries([
+        // MARKETS carries real BCP-47 locales — the UK's region subtag is GB,
+        // not UK, and an invalid hreflang is silently ignored by Google.
+        ...VALID.map((m) => [MARKETS[m].locale, `/${m}`]),
+        ["x-default", "/"],
+      ]),
+    },
+  };
 }
 
 const HOOK: Record<Market, { eyebrow: string; line: string; sub: string }> = {
@@ -129,6 +154,11 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
           </div>
         </section>
 
+        {/* ---------- area guides: entry point to the link mesh ---------- */}
+        <Suspense fallback={null}>
+          <AreaLinks market={m} />
+        </Suspense>
+
         {/* ---------- the differentiator ---------- */}
         <section className="border-y border-line bg-surface">
           <div className="mx-auto max-w-[1400px] px-6 py-20">
@@ -179,5 +209,30 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
 
       <SiteFooter market={m} />
     </>
+  );
+}
+
+async function AreaLinks({ market }: { market: Market }) {
+  const tax = await getAreaTaxonomy();
+  const cities = tax.filter((t) => t.market === market && !t.localitySlug);
+  if (!cities.length) return null;
+
+  return (
+    <section className="mx-auto max-w-[1400px] px-6 pb-8">
+      <p className="label">Browse by area</p>
+      <ul className="mt-5 flex flex-wrap gap-2">
+        {cities.map((c) => (
+          <li key={c.citySlug}>
+            <Link
+              href={`/${market}/for-sale/${c.citySlug}`}
+              className="inline-flex items-center gap-2 border border-line bg-surface px-4 py-2.5 text-sm capitalize transition-colors hover:border-brass"
+            >
+              {c.citySlug.replace(/-/g, " ")}
+              <span className="label tnum">{c.count}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { evaluateEligibility, MARKETS, type Market } from "@lavion/schema";
+import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { getSimilarListings, slugify } from "@/lib/areas";
 import { formatArea, formatPrice, statusLabel, whatsappLink } from "@/lib/format";
 import { getAllSlugs, getListing, type ListingDetail } from "@/lib/listings";
 
@@ -58,11 +60,19 @@ export default async function PropertyPage({
               {MARKETS[m].label}
             </Link>
             <span className="mx-2 text-line-strong">/</span>
-            <Link href={`/${m}/search`} className="hover:text-brass">
+            <Link
+              href={`/${m}/for-sale/${slugify(listing.location.city)}`}
+              className="hover:text-brass"
+            >
               {listing.location.city}
             </Link>
             <span className="mx-2 text-line-strong">/</span>
-            <span className="text-ink-soft">{listing.location.locality}</span>
+            <Link
+              href={`/${m}/for-sale/${slugify(listing.location.city)}/${slugify(listing.location.locality)}`}
+              className="hover:text-brass"
+            >
+              {listing.location.locality}
+            </Link>
           </nav>
         </div>
 
@@ -192,10 +202,54 @@ export default async function PropertyPage({
             </div>
           </aside>
         </div>
+
+        {/* A sold listing keeps its URL and its accumulated authority. Rather
+            than 404 and throw that away, show what it means and offer live
+            alternatives — "what did this sell for" is high-intent traffic. */}
+        <Suspense fallback={null}>
+          <SimilarSection market={m} listing={listing} sold={sold} />
+        </Suspense>
       </main>
 
       <SiteFooter market={m} />
     </>
+  );
+}
+
+async function SimilarSection({
+  market,
+  listing,
+  sold,
+}: {
+  market: Market;
+  listing: ListingDetail;
+  sold: boolean;
+}) {
+  const similar = await getSimilarListings(market, listing);
+  if (!similar.length) return null;
+
+  return (
+    <section className="border-t border-line bg-surface">
+      <div className="mx-auto max-w-[1400px] px-6 py-14">
+        <p className="label">{sold ? "Still available nearby" : "Similar properties"}</p>
+        <h2 className="mt-3 font-display text-3xl">
+          {sold
+            ? `Available now in ${listing.location.locality}`
+            : `More in ${listing.location.locality}`}
+        </h2>
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {similar.map((l) => (
+            <ListingCard key={l.slug} listing={l} />
+          ))}
+        </div>
+        <Link
+          href={`/${market}/for-sale/${slugify(listing.location.city)}/${slugify(listing.location.locality)}`}
+          className="label mt-8 inline-block hover:text-brass"
+        >
+          All property in {listing.location.locality} &rarr;
+        </Link>
+      </div>
+    </section>
   );
 }
 
