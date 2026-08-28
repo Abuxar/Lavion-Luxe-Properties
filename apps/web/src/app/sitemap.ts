@@ -38,11 +38,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  const submit: MetadataRoute.Sitemap = MARKETS_LIST.map((m) => ({
-    url: `${base}/${m}/submit`,
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  const submit: MetadataRoute.Sitemap = MARKETS_LIST.flatMap((m) => [
+    { url: `${base}/${m}/submit`, changeFrequency: "monthly" as const, priority: 0.6 },
+    { url: `${base}/${m}/valuation`, changeFrequency: "monthly" as const, priority: 0.65 },
+  ]);
 
   // Area guides — indexable ones only.
   const guides: MetadataRoute.Sitemap = [];

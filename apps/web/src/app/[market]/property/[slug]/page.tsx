@@ -3,8 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { evaluateEligibility, MARKETS, type Market } from "@lavion/schema";
+import { EnquiryForm } from "@/components/enquiry-form";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { routeToAgent } from "@/lib/agents";
 import { getSimilarListings, slugify } from "@/lib/areas";
 import { formatArea, formatPrice, statusLabel, whatsappLink } from "@/lib/format";
 import { getAllSlugs, getListing, type ListingDetail } from "@/lib/listings";
@@ -41,6 +43,13 @@ export default async function PropertyPage({
 
   const eligibility = evaluateEligibility(listing as never);
   const sold = listing.status === "sold" || listing.status === "let";
+
+  // F08 — the enquiry goes to whoever covers this territory, and the WhatsApp
+  // link uses that agent's real number rather than a placeholder.
+  const agent = routeToAgent(m, {
+    locality: listing.location.locality,
+    city: listing.location.city,
+  });
 
   return (
     <>
@@ -156,20 +165,30 @@ export default async function PropertyPage({
               <div className="mt-6 flex flex-col gap-3">
                 <a
                   href={whatsappLink(
-                    `+${MARKETS[m].dialCode}000000000`,
+                    agent.phone,
                     listing.title,
-                    `https://lavionluxe.com/${m}/property/${listing.slug}`,
+                    `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/${m}/property/${listing.slug}`,
                   )}
                   className="inline-flex items-center justify-center gap-2 bg-ink px-6 py-4 text-sm font-medium text-paper transition-colors hover:bg-brass"
                 >
                   Enquire on WhatsApp
                 </a>
-                <button
-                  type="button"
-                  className="border border-line px-6 py-4 text-sm font-medium transition-colors hover:border-brass"
-                >
-                  Request a viewing
-                </button>
+                <EnquiryForm
+                  market={m}
+                  listingSlug={listing.slug}
+                  listingTitle={listing.title}
+                  locality={listing.location.locality}
+                  city={listing.location.city}
+                />
+              </div>
+
+              <div className="mt-6 border-t border-line pt-5">
+                <p className="label">Your contact</p>
+                <p className="mt-2 text-sm font-medium">{agent.name}</p>
+                <p className="text-xs text-ink-faint">{agent.title}</p>
+                <p className="label mt-2 !normal-case !tracking-normal">
+                  Speaks {agent.languages.join(", ")}
+                </p>
               </div>
 
               {eligibility.length > 0 && (

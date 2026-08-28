@@ -179,6 +179,29 @@ which is why those few colours are literals rather than theme tokens.
 but would make the headline — the LCP element and the whole message — depend on
 JavaScript.
 
+## F02 / F08 — leads
+
+Until now the site could not capture a lead: "Request a viewing" was an inert
+button and the WhatsApp link pointed at a placeholder number.
+
+**F08 — territory routing.** `routeToAgent()` matches locality, then city, then
+market, so a Dubai Marina enquiry reaches the Marina specialist and nothing is
+ever unrouted. The listing page names the assigned agent and its WhatsApp link
+uses that agent's real number.
+
+**F02 — valuation.** `/[market]/valuation` returns an indicative range computed
+from comparable asking prices per sq ft, then books a real appraisal. The
+estimator is deliberately conservative: the spread widens as the comparable
+sample thins (±12% at 5+, ±25% at 2), the page states the comparable count and
+whether the basis was locality, city or market, and it returns **null rather
+than inventing a number** when there is nothing to compare. It says plainly
+that these are asking prices, not achieved sale prices.
+
+**Inbox** at `/admin/leads` — enquiries, viewings and valuations in one
+collection with a `kind` discriminator, already routed, with new/contacted/
+closed states. Persisted through `blob-collection.ts`, extracted from the
+submission store so both share one load/save implementation.
+
 ## F04 / F05 / F10 — the investor layer
 
 `/[market]/guides` and `/[market]/guides/[slug]`. Six guides, two per market.

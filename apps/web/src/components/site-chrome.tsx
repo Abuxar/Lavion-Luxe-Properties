@@ -98,6 +98,11 @@ export function SiteFooter({ market }: { market?: Market }) {
                   List your property
                 </Link>
               </li>
+              <li>
+                <Link href={`/${active}/valuation`} className="text-ink-soft hover:text-brass">
+                  Request a valuation
+                </Link>
+              </li>
             </ul>
           </div>
 
