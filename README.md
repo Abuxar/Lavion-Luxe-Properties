@@ -179,6 +179,39 @@ which is why those few colours are literals rather than theme tokens.
 but would make the headline — the LCP element and the whole message — depend on
 JavaScript.
 
+## Search and F01 saved searches
+
+`/[market]/search` is now a real search: area, city, property type, price
+range, beds, baths, off-plan, Golden Visa eligibility, five sort orders and
+pagination. Filters drive the **URL, not local state**, so a result set is
+shareable and the back button behaves — and every filter combination
+canonicalises to the unfiltered page, because faceted URLs are infinite and
+letting them into the index is how a portal loses its crawl budget.
+
+Facet options are derived from live inventory, so a filter never offers a
+combination with nothing behind it. Number fields commit on blur or Enter
+rather than per keystroke, so typing a price does not push six history entries.
+
+**One query model.** `lib/search.ts` owns parsing, serialising, filtering and
+sorting, and both the search page and the saved-search matcher call the same
+`matches()` predicate. If they each grew their own filter logic they would
+drift, and a subscriber would be alerted about a property their own search
+excludes. Verified identical output for both paths.
+
+### F01 — scope stated plainly
+
+Subscriptions and matching are built. **Email dispatch is not** — it needs a
+provider and a scheduler, neither of which exists yet. Rather than ship a queue
+that silently sends nothing, matches surface in `/admin/alerts` so the team can
+act on them by hand today; dispatch later becomes a layer on top, not a
+rewrite. The admin page says so on the page itself, not just in this file.
+
+Everything already listed when someone subscribes is recorded as seen, so the
+first batch is genuinely *new since you subscribed* rather than the whole
+catalogue. **Demand by area** ranks what buyers are asking for — an area with
+subscribers and zero matching inventory is the clearest signal of what to
+onboard next.
+
 ## F02 / F08 — leads
 
 Until now the site could not capture a lead: "Request a viewing" was an inert
