@@ -78,6 +78,7 @@ locally (it is gitignored) and set the same values in the Vercel dashboard.
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud for the `next/image` loader |
 | `API_BASE_URL` | Backend origin. Unset in phase 1 — the sample fallback is used |
 | `ADMIN_PASSPHRASE` | Review-queue access, 8+ chars. **Unset seals the queue** |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store for photo upload (auto-set by the CLI) |
 
 **API — later phase, not deployed yet**
 
@@ -107,11 +108,32 @@ crafted request — the disabled button is the courtesy, not the control.
 ### Admin-entered listings
 
 `/admin/new` publishes directly to any of the three markets — full details,
-location (with optional lat/lng), amenities and images. Images are URLs, one
-per line; the `next/image` loader passes absolute URLs and local paths through
-and prefixes bare Cloudinary IDs, so the same field keeps working once
-Cloudinary is connected. Admin entries go through the identical Zod schema and
-the identical publish gate as agency submissions.
+location (with optional lat/lng), amenities and photos. Admin entries go
+through the identical Zod schema, mapper and publish gate as agency
+submissions.
+
+### Photo upload
+
+Both the admin form and the public submission form take photos straight from
+the device. A plain `accept="image/*"` file input is what makes this work on a
+phone — iOS and Android surface Camera, Photo Library and Files from the same
+control, so no separate camera path is needed. Desktop adds drag-and-drop.
+
+Files are **downscaled in the browser** (max 2000px, JPEG q0.82) before upload.
+A phone photo is routinely 3–8 MB at ~4000px; a listing hero never renders
+above ~2000px, so shipping the original wastes the seller's mobile data, our
+storage and the viewer's LCP.
+
+Upload goes **browser → Vercel Blob directly** via a short-lived token from
+`/api/upload`, so the file never passes through a Server Action and the body
+limit never applies. Store: `lavion-media` (public access — property photos are
+served on public pages, and private access would mean slow delivery and high
+egress). If `BLOB_READ_WRITE_TOKEN` is absent the uploader falls back to an
+inline data URL so the form still works.
+
+The first image is the hero and the search thumbnail; images can be reordered
+and removed. A collapsed "paste image URLs" field remains for Cloudinary IDs
+or external URLs once that account is connected.
 
 ### Compliance override
 

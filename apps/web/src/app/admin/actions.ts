@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { ListingInput, evaluatePublishGates, toSqft } from "@lavion/schema";
+import { evaluatePublishGates } from "@lavion/schema";
 import { isAdmin, signIn, signOut } from "@/lib/admin-auth";
 import {
   approveSubmission,
@@ -113,110 +113,30 @@ export async function submitPropertyAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const get = (k: string) => {
-    const v = formData.get(k);
-    return v === null || v === "" ? undefined : String(v);
-  };
-  const num = (k: string) => {
-    const v = get(k);
-    return v === undefined ? undefined : Number(v);
-  };
-
-  const market = get("market") as "uk" | "ae" | "pk" | undefined;
-  if (!market) return { status: "error", message: "Choose a market." };
-
-  const areaUnit = (get("areaUnit") ?? "sqft") as "sqft" | "sqm" | "marla" | "kanal";
-  const areaValue = num("areaValue") ?? 0;
-  const title = get("title") ?? "";
-
-  const compliance: ListingInput["compliance"] = {};
-  if (market === "ae") {
-    compliance.ae = {
-      permitNumber: get("ae_permitNumber"),
-      permitExpiry: get("ae_permitExpiry") ? new Date(get("ae_permitExpiry")!) : undefined,
-      developerName: get("ae_developerName"),
-      escrowAccount: get("ae_escrowAccount"),
-      completionDate: get("ae_completionDate") ? new Date(get("ae_completionDate")!) : undefined,
-    };
-  }
-  if (market === "uk") {
-    compliance.uk = {
-      councilTaxBand: get("uk_councilTaxBand"),
-      tenureDetail: get("tenure") as "freehold" | "leasehold" | "commonhold" | undefined,
-      epcRating: get("uk_epcRating"),
-      constructionMaterials: get("uk_constructionMaterials"),
-      affectedByIssues: [],
-      leaseholdYearsRemaining: num("uk_leaseholdYearsRemaining"),
-      serviceChargeAnnual: num("uk_serviceChargeAnnual"),
-      groundRentAnnual: num("uk_groundRentAnnual"),
-    };
-  }
-  if (market === "pk") {
-    compliance.pk = {
-      societyName: get("pk_societyName"),
-      societyApprovalRef: get("pk_societyApprovalRef"),
-      transferAuthority: get("pk_transferAuthority"),
-    };
-  }
-
-  const candidate = {
-    slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70),
-    title,
-    description: get("description") ?? "",
-    source: "self_submitted" as const,
-    status: "pending_review" as const,
-    market,
-    agents: [],
-    transaction: (get("transaction") ?? "sale") as "sale" | "rent",
-    category: get("category") ?? "apartment",
-    offPlan: get("offPlan") === "on",
-    price: {
-      amount: num("amount") ?? 0,
-      currency: (market === "uk" ? "GBP" : market === "ae" ? "AED" : "PKR") as
-        | "GBP"
-        | "AED"
-        | "PKR",
-      qualifier: "asking" as const,
-    },
-    area: { value: areaValue, unit: areaUnit, canonicalSqft: toSqft(areaValue, areaUnit) },
-    bedrooms: num("bedrooms"),
-    bathrooms: num("bathrooms"),
-    tenure: get("tenure") as "freehold" | "leasehold" | "commonhold" | undefined,
-    location: {
-      addressLines: [get("addressLine") ?? get("locality") ?? ""],
-      locality: get("locality") ?? "",
-      city: get("city") ?? "",
-      freeholdZone: get("freeholdZone") === "on",
-    },
-    amenities: [],
-    media: [],
-    compliance,
-    priceHistory: [],
-  };
-
-  const parsed = ListingInput.safeParse(candidate);
-  if (!parsed.success) {
-    const fieldIssues: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      fieldIssues[issue.path.join(".")] = issue.message;
-    }
+  // Same mapper as the admin entry form, so a self-submitted listing and an
+  // admin-entered one can never drift into two different shapes.
+  const built = buildListingFromForm(formData, "self_submitted");
+  if (!built.ok) {
     return {
       status: "error",
       message: "Some details need fixing before this can be submitted.",
-      fieldIssues,
+      fieldIssues: built.fieldIssues,
     };
   }
 
   await createSubmission({
-    submitterName: get("submitterName") ?? "Unknown",
-    submitterEmail: get("submitterEmail") ?? "",
-    listing: parsed.data,
+    submitterName: String(formData.get("submitterName") ?? "Unknown"),
+    submitterEmail: String(formData.get("submitterEmail") ?? ""),
+    listing: built.listing,
   });
 
   // Tell the submitter now what will hold the listing in review, rather than
   // letting them discover it days later through an admin rejection.
-  const gates = evaluatePublishGates(parsed.data);
+  const gates = evaluatePublishGates(built.listing);
   const blocking = gates.failures.filter((f) => f.severity === "blocking");
+
+  updateTag("listings");
+  revalidatePath("/admin");
 
   if (blocking.length) {
     return {
@@ -232,8 +152,6 @@ export async function submitPropertyAction(
     };
   }
 
-  updateTag("listings");
-  revalidatePath("/admin");
   return {
     status: "ok",
     message: "Submitted for review. Nothing is published until our team approves it.",

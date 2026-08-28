@@ -11,6 +11,7 @@ import { ListingInput, toSqft } from "@lavion/schema";
  */
 export function buildListingFromForm(
   formData: FormData,
+  source: "admin_entry" | "self_submitted" = "admin_entry",
 ):
   | { ok: true; listing: ListingInput }
   | { ok: false; fieldIssues: Record<string, string> } {
@@ -31,10 +32,12 @@ export function buildListingFromForm(
   const title = get("title") ?? "";
   const tenure = get("tenure") as "freehold" | "leasehold" | "commonhold" | undefined;
 
-  // Media: one image URL per line. Cloudinary public IDs work here too — the
-  // custom next/image loader passes absolute URLs and local paths straight
-  // through and prefixes anything else with the Cloudinary delivery URL.
-  const mediaRaw = get("media") ?? "";
+  // Two sources, one list: `media` holds URLs returned by the uploader (Blob,
+  // or a data URL when Blob is unconfigured), `mediaUrls` holds anything typed
+  // in by hand. Uploads come first so they win the hero slot. Cloudinary public
+  // IDs work in either — the custom next/image loader passes absolute URLs and
+  // local paths straight through and prefixes anything else.
+  const mediaRaw = [get("media"), get("mediaUrls")].filter(Boolean).join("\n");
   const media = mediaRaw
     .split(/[\n,]/)
     .map((x) => x.trim())
@@ -102,8 +105,10 @@ export function buildListingFromForm(
     slug: slugBase,
     title,
     description: get("description") ?? "",
-    source: "admin_entry" as const,
-    status: "draft" as const,
+    source,
+    status: (source === "self_submitted" ? "pending_review" : "draft") as
+      | "pending_review"
+      | "draft",
     market,
     agents: [],
     transaction: (get("transaction") ?? "sale") as "sale" | "rent",

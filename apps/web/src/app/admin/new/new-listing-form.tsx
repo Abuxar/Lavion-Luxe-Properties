@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Image from "next/image";
+import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
 import { createListingAction, type ActionState } from "../actions";
 
 const initial: ActionState = { status: "idle" };
@@ -25,10 +25,10 @@ export function NewListingForm() {
   const [market, setMarket] = useState<Market>("ae");
   const [tenure, setTenure] = useState("freehold");
   const [offPlan, setOffPlan] = useState(false);
-  const [media, setMedia] = useState("");
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [urls, setUrls] = useState("");
 
   const issues = state.status === "error" ? (state.fieldIssues ?? {}) : {};
-  const previews = media.split(/[\n,]/).map((x) => x.trim()).filter(Boolean).slice(0, 6);
 
   return (
     <form action={action} className="flex flex-col gap-10">
@@ -125,40 +125,40 @@ export function NewListingForm() {
       </Group>
 
       {/* ---- images ---- */}
-      <Group title="Images"
-        note="One image URL per line. Cloudinary public IDs work here too once the account is connected — the image loader passes absolute URLs straight through and prefixes bare IDs.">
-        <T label="Image URLs" name="media" rows={4} issues={issues}
-           value={media} onChange={setMedia}
-           hint="The first image is the hero and the card thumbnail." />
+      <Group title="Photos"
+        note="Upload from this device — on a phone the picker offers the camera, your photo library and files. Images are resized before upload so a phone photo does not cost the viewer their LCP.">
+        <ImageUploader value={images} onChange={setImages} name="media" />
 
-        {previews.length > 0 && (
-          <div className="sm:col-span-2">
-            <p className="label">Preview</p>
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {previews.map((src, i) => (
-                <div key={i} className="relative aspect-[4/3] overflow-hidden border border-line bg-surface-2">
-                  <Image src={src} alt="" fill sizes="120px" className="object-cover" unoptimized />
-                </div>
+        <details className="sm:col-span-2">
+          <summary className="label cursor-pointer">Or paste image URLs</summary>
+          <div className="mt-3">
+            <textarea
+              name="mediaUrls"
+              rows={3}
+              value={urls}
+              onChange={(e) => setUrls(e.target.value)}
+              placeholder="https://…&#10;/samples/marina-penthouse.svg"
+              className={inputCls}
+            />
+            <p className="mt-1.5 text-xs text-ink-faint">
+              One per line. Cloudinary public IDs work here too once that account is connected.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["marina-penthouse","creek-horizon","chelsea-townhouse","marylebone-flat","dha-villa","clifton-apartment"].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() =>
+                    setUrls((m) => [m, `/samples/${n}.svg`].filter(Boolean).join("\n"))
+                  }
+                  className="label border border-line px-3 py-1.5 transition-colors hover:border-brass"
+                >
+                  + {n.replace(/-/g, " ")}
+                </button>
               ))}
             </div>
           </div>
-        )}
-
-        <div className="sm:col-span-2">
-          <p className="label">No images to hand?</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {["marina-penthouse","creek-horizon","chelsea-townhouse","marylebone-flat","dha-villa","clifton-apartment"].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setMedia((m) => (m ? `${m}\n/samples/${n}.svg` : `/samples/${n}.svg`))}
-                className="label border border-line px-3 py-1.5 transition-colors hover:border-brass"
-              >
-                + {n.replace(/-/g, " ")}
-              </button>
-            ))}
-          </div>
-        </div>
+        </details>
       </Group>
 
       {/* ---- compliance ---- */}

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Market } from "@lavion/schema";
+import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
 import { submitPropertyAction, type ActionState } from "@/app/admin/actions";
 
 const initial: ActionState = { status: "idle" };
@@ -20,6 +21,7 @@ export function SubmitForm({ market }: { market: Market }) {
   const [state, action, pending] = useActionState(submitPropertyAction, initial);
   const [offPlan, setOffPlan] = useState(false);
   const [tenure, setTenure] = useState("freehold");
+  const [images, setImages] = useState<UploadedImage[]>([]);
 
   const issues = state.status === "error" ? (state.fieldIssues ?? {}) : {};
 
@@ -112,6 +114,13 @@ export function SubmitForm({ market }: { market: Market }) {
         {market === "ae" && (
           <Checkbox label="Located in a designated freehold area" name="freeholdZone" />
         )}
+      </Section>
+
+      <Section
+        title="Photos"
+        note="Add photos straight from this device — on a phone the picker offers your camera, photo library and files. Listings with photos get far more enquiries."
+      >
+        <ImageUploader value={images} onChange={setImages} name="media" />
       </Section>
 
       {/* Market-specific requirements, surfaced with WHY they are needed. */}
