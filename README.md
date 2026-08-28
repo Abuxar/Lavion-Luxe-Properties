@@ -78,7 +78,7 @@ locally (it is gitignored) and set the same values in the Vercel dashboard.
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud for the `next/image` loader |
 | `API_BASE_URL` | Backend origin. Unset in phase 1 — the sample fallback is used |
 | `ADMIN_PASSPHRASE` | Review-queue access, 8+ chars. **Unset seals the queue** |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store for photo upload (auto-set by the CLI) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob — photo upload **and** the submission queue |
 
 **API — later phase, not deployed yet**
 
@@ -199,6 +199,16 @@ away. "What did this sell for" is high-intent traffic competitors discard.
 **Phase 1 — frontend only.** The site is live and runs with **no backend**:
 `apps/web` falls back to a built-in sample inventory whenever the API is
 unreachable, so every page renders without a database.
+
+The submission queue persists to **Vercel Blob** as a single JSON document
+(`queue/submissions.json`) — the same store that backs photo upload. A
+module-level Map does not work on serverless: instances come and go per
+request, so a listing created on one instance is invisible to the next read.
+That is a correctness failure on every request, not a cold-start caveat.
+
+Known limit: writes are read-modify-write, so two admins acting in the same
+instant can clobber each other. Fine for a small internal queue; it disappears
+when this moves to Atlas and each mutation becomes one document update.
 
 Live: **https://lavion-luxe-properties.vercel.app** — one Vercel project,
 Root Directory `apps/web`, auto-deploying on push to `main`.

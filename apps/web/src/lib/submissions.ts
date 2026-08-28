@@ -1,4 +1,6 @@
 import "server-only";
+import { loadAll, saveAll } from "./submission-store";
+import type { Submission, SubmissionStatus } from "./submissions-types";
 import {
   evaluatePublishGates,
   toSqft,
@@ -21,18 +23,7 @@ import {
  * change, because they read from `evaluatePublishGates` in the shared schema.
  */
 
-export type SubmissionStatus = "pending_review" | "approved" | "rejected";
-
-export interface Submission {
-  id: string;
-  submittedAt: string;
-  submitterName: string;
-  submitterEmail: string;
-  status: SubmissionStatus;
-  /** Why an admin rejected it — shown back to the submitter. */
-  reviewNote?: string;
-  listing: ListingInput;
-}
+export type { Submission, SubmissionStatus } from "./submissions-types";
 
 function draft(partial: {
   market: Market;
@@ -229,8 +220,26 @@ const SEED: Submission[] = [
   },
 ];
 
-const store = new Map<string, Submission>(SEED.map((s) => [s.id, s]));
-let counter = SEED.length;
+/**
+ * Reads and writes go through the Blob-backed store. A module-level Map is
+ * per-instance on serverless, so a created listing written on one instance is
+ * invisible to the next read — see submission-store.ts.
+ */
+async function read(): Promise<Submission[]> {
+  return loadAll(SEED);
+}
+
+async function write(subs: Submission[]): Promise<void> {
+  await saveAll(subs);
+}
+
+function nextId(subs: Submission[]): string {
+  const max = subs.reduce((acc, s) => {
+    const n = Number(s.id.replace("sub_", ""));
+    return Number.isFinite(n) && n > acc ? n : acc;
+  }, 0);
+  return `sub_${String(max + 1).padStart(2, "0")}`;
+}
 
 export interface SubmissionWithGates extends Submission {
   gates: GateResult;
@@ -243,14 +252,16 @@ function withGates(s: Submission): SubmissionWithGates {
 export async function listSubmissions(
   status?: SubmissionStatus,
 ): Promise<SubmissionWithGates[]> {
-  const all = [...store.values()]
+  const all = await read();
+  return all
     .filter((s) => !status || s.status === status)
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
-  return all.map(withGates);
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+    .map(withGates);
 }
 
 export async function getSubmission(id: string): Promise<SubmissionWithGates | null> {
-  const s = store.get(id);
+  const all = await read();
+  const s = all.find((x) => x.id === id);
   return s ? withGates(s) : null;
 }
 
@@ -259,10 +270,9 @@ export async function createSubmission(input: {
   submitterEmail: string;
   listing: ListingInput;
 }): Promise<SubmissionWithGates> {
-  counter += 1;
-  const id = `sub_${String(counter).padStart(2, "0")}`;
+  const all = await read();
   const submission: Submission = {
-    id,
+    id: nextId(all),
     submittedAt: new Date().toISOString(),
     submitterName: input.submitterName,
     submitterEmail: input.submitterEmail,
@@ -270,25 +280,24 @@ export async function createSubmission(input: {
     status: "pending_review",
     listing: { ...input.listing, source: "self_submitted", status: "pending_review" },
   };
-  store.set(id, submission);
+  await write([...all, submission]);
   return withGates(submission);
 }
 
 /**
- * Approval is where the gate binds. An admin cannot wave a listing through
- * that fails a blocking gate — the check runs here, not only in the UI, so a
- * crafted request cannot bypass it either.
+ * Approval is where the gate binds. Without an explicit override an admin
+ * cannot wave through a listing that fails a blocking gate — the check runs
+ * here, not only in the UI, so a crafted request cannot bypass it either.
  */
 export async function approveSubmission(
   id: string,
   override?: { by: string; reason: string },
 ): Promise<{ ok: true; submission: SubmissionWithGates } | { ok: false; gates: GateResult }> {
-  const s = store.get(id);
+  const all = await read();
+  const s = all.find((x) => x.id === id);
   if (!s) throw new Error("submission not found");
 
   const gates = evaluatePublishGates(s.listing);
-
-  // Without an explicit override the gate is absolute.
   if (!gates.canPublish && !override) return { ok: false, gates };
 
   const bypassed = gates.failures
@@ -310,7 +319,8 @@ export async function approveSubmission(
       ...(record ? { complianceOverride: record } : {}),
     },
   };
-  store.set(id, updated);
+
+  await write(all.map((x) => (x.id === id ? updated : x)));
   return { ok: true, submission: withGates(updated) };
 }
 
@@ -325,8 +335,7 @@ export async function createAdminListing(input: {
   publishNow: boolean;
   override?: { reason: string };
 }): Promise<{ submission: SubmissionWithGates; published: boolean; gates: GateResult }> {
-  counter += 1;
-  const id = `sub_${String(counter).padStart(2, "0")}`;
+  const all = await read();
   const gates = evaluatePublishGates(input.listing);
 
   const canPublish = input.publishNow && (gates.canPublish || !!input.override);
@@ -338,7 +347,7 @@ export async function createAdminListing(input: {
       : undefined;
 
   const submission: Submission = {
-    id,
+    id: nextId(all),
     submittedAt: new Date().toISOString(),
     submitterName: input.by,
     submitterEmail: "—",
@@ -353,8 +362,23 @@ export async function createAdminListing(input: {
     },
   };
 
-  store.set(id, submission);
+  await write([...all, submission]);
   return { submission: withGates(submission), published: canPublish, gates };
+}
+
+export async function rejectSubmission(id: string, note: string): Promise<SubmissionWithGates> {
+  const all = await read();
+  const s = all.find((x) => x.id === id);
+  if (!s) throw new Error("submission not found");
+
+  const updated: Submission = {
+    ...s,
+    status: "rejected",
+    reviewNote: note,
+    listing: { ...s.listing, status: "withdrawn" },
+  };
+  await write(all.map((x) => (x.id === id ? updated : x)));
+  return withGates(updated);
 }
 
 /**
@@ -362,7 +386,8 @@ export async function createAdminListing(input: {
  * seed inventory. Replaced by an Atlas query when the database lands.
  */
 export async function publishedListings(market?: Market): Promise<ListingInput[]> {
-  return [...store.values()]
+  const all = await read();
+  return all
     .filter((s) => s.status === "approved" && s.listing.status === "published")
     .filter((s) => !market || s.listing.market === market)
     .map((s) => s.listing);
@@ -370,25 +395,12 @@ export async function publishedListings(market?: Market): Promise<ListingInput[]
 
 /** Overridden listings — the cleanup list. */
 export async function overriddenListings(): Promise<Submission[]> {
-  return [...store.values()].filter((s) => s.listing.complianceOverride);
-}
-
-export async function rejectSubmission(id: string, note: string): Promise<SubmissionWithGates> {
-  const s = store.get(id);
-  if (!s) throw new Error("submission not found");
-  const updated: Submission = {
-    ...s,
-    status: "rejected",
-    reviewNote: note,
-    listing: { ...s.listing, status: "withdrawn" },
-  };
-  store.set(id, updated);
-  return withGates(updated);
+  const all = await read();
+  return all.filter((s) => s.listing.complianceOverride);
 }
 
 export async function queueCounts() {
-  const all = [...store.values()];
-  const overridden = all.filter((s) => s.listing.complianceOverride).length;
+  const all = await read();
   const pending = all.filter((s) => s.status === "pending_review");
   const blocked = pending.filter((s) => !evaluatePublishGates(s.listing).canPublish);
   return {
@@ -397,6 +409,6 @@ export async function queueCounts() {
     readyToPublish: pending.length - blocked.length,
     approved: all.filter((s) => s.status === "approved").length,
     rejected: all.filter((s) => s.status === "rejected").length,
-    overridden,
+    overridden: all.filter((s) => s.listing.complianceOverride).length,
   };
 }
