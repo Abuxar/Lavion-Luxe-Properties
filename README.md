@@ -152,6 +152,23 @@ use `overriddenListings()` as the cleanup list before going live.
 single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
 closed**. This is a phase-1 placeholder, not the RBAC in the plan.
 
+## Market skylines
+
+Each market hero carries the landmarks of its country — Westminster, Big Ben
+and the London Eye; Emirates Towers, the Burj Khalifa, the Museum of the Future
+and the Burj Al Arab; Badshahi Mosque, Minar-e-Pakistan and Faisal Mosque.
+
+Drawn as inline SVG from geometric primitives, not loaded as images: no extra
+request, nothing competing with the hero for LCP, scales to any viewport, and
+the fill comes from theme tokens so one drawing works on both grounds.
+Silhouettes rather than illustrations — a photographic skyline would fight the
+petrol-and-brass palette, and detail would pull attention off the headline.
+
+**Hero content uses a CSS-only entrance (`data-rise`), never `data-reveal`.**
+`data-reveal` sets `opacity: 0` until GSAP mounts, which is fine below the fold
+but would make the headline — the LCP element and the whole message — depend on
+JavaScript. A CSS animation runs on first paint and cannot strand content.
+
 ## F04 / F05 / F10 — the investor layer
 
 `/[market]/guides` and `/[market]/guides/[slug]`. Six guides, two per market.
