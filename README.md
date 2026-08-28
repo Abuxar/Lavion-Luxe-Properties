@@ -152,22 +152,32 @@ use `overriddenListings()` as the cleanup list before going live.
 single shared passphrase from `ADMIN_PASSPHRASE`; if unset the queue **fails
 closed**. This is a phase-1 placeholder, not the RBAC in the plan.
 
-## Market skylines
+## Market hero photography
 
-Each market hero carries the landmarks of its country — Westminster, Big Ben
-and the London Eye; Emirates Towers, the Burj Khalifa, the Museum of the Future
-and the Burj Al Arab; Badshahi Mosque, Minar-e-Pakistan and Faisal Mosque.
+Each market hero carries a photograph of its landmark: the Palace of
+Westminster in fog, the Dubai skyline above cloud at sunrise, and the Pakistan
+Monument lit at dusk.
 
-Drawn as inline SVG from geometric primitives, not loaded as images: no extra
-request, nothing competing with the hero for LCP, scales to any viewport, and
-the fill comes from theme tokens so one drawing works on both grounds.
-Silhouettes rather than illustrations — a photographic skyline would fight the
-petrol-and-brass palette, and detail would pull attention off the headline.
+All three are cropped to an **identical 16:9 and served at 1600x900** WebP
+(17–61 KB each), so switching market does not change the hero's height or
+framing. Sources are pre-processed with ImageMagick rather than resized at
+request time — the custom `next/image` loader passes local paths straight
+through, so the file on disk is the file that ships.
+
+A light blur plus a left-weighted scrim keeps the headline legible over
+photography without dimming the image into mud, and the bottom of the scrim
+fades to `--color-paper` so the hero joins the next section rather than ending
+on a seam.
+
+**The hero commits to a dark treatment in both themes.** A photograph cannot
+carry dark type in light mode and light type in dark mode without a second crop
+and a second scrim, so the scrim always darkens and hero type is always light —
+which is why those few colours are literals rather than theme tokens.
 
 **Hero content uses a CSS-only entrance (`data-rise`), never `data-reveal`.**
 `data-reveal` sets `opacity: 0` until GSAP mounts, which is fine below the fold
 but would make the headline — the LCP element and the whole message — depend on
-JavaScript. A CSS animation runs on first paint and cannot strand content.
+JavaScript.
 
 ## F04 / F05 / F10 — the investor layer
 

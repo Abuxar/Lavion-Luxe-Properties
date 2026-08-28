@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MARKETS, type Market } from "@lavion/schema";
 import { MotionProvider } from "@/components/motion-provider";
-import { Skyline } from "@/components/skyline";
+import { HeroBackdrop } from "@/components/hero-backdrop";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getListings } from "@/lib/listings";
@@ -73,31 +73,9 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
       <main className="flex-1">
         {/* ---------- hero ---------- */}
         <section className="relative flex min-h-[calc(100svh-4.25rem)] flex-col justify-center overflow-hidden border-b border-line">
-          {/* Ambient light behind the skyline — sun off the water for Dubai,
-              low winter light for London, dusk haze for Lahore. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 opacity-[0.18]"
-            style={{
-              backgroundImage:
-                "radial-gradient(58% 52% at 76% 22%, var(--color-brass) 0%, transparent 70%), linear-gradient(180deg, var(--color-petrol) 0%, transparent 60%)",
-            }}
-          />
+          <HeroBackdrop market={m} />
 
-          {/* Landmarks of the selected market, drawn not photographed. */}
-          <Skyline market={m} />
-          {/* Hairline grid — architectural, drawn in CSS so it costs nothing. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 opacity-[0.35]"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, var(--color-line) 1px, transparent 1px)",
-              backgroundSize: "clamp(80px, 9vw, 150px) 100%",
-            }}
-          />
-
-          <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-[clamp(110px,27vw,390px)] pt-16">
+          <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-24 pt-16 text-[#f1efe9]">
             <div className="max-w-4xl">
               <p data-rise="1" className="label">
                 {copy.eyebrow}
@@ -111,7 +89,7 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
               <div data-rise="3" className="rule-brass mt-8 w-40" />
               <p
                 data-rise="3"
-                className="mt-8 max-w-[58ch] text-lg leading-relaxed text-ink-soft"
+                className="mt-8 max-w-[58ch] text-lg leading-relaxed text-[#c7cfcb]"
               >
                 {copy.sub}
               </p>
@@ -119,7 +97,7 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
               <div data-rise="4" className="mt-10 flex flex-wrap gap-3">
                 <Link
                   href={`/${m}/search`}
-                  className="group inline-flex items-center gap-3 border border-ink bg-ink px-7 py-4 text-sm font-medium text-paper transition-colors hover:bg-brass hover:border-brass"
+                  className="group inline-flex items-center gap-3 border border-[#f1efe9] bg-[#f1efe9] px-7 py-4 text-sm font-medium text-[#0b1416] transition-colors hover:border-brass hover:bg-brass hover:text-[#0b1416]"
                 >
                   Browse {MARKETS[m].label}
                   <span aria-hidden className="transition-transform group-hover:translate-x-1">
@@ -128,7 +106,7 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
                 </Link>
                 <Link
                   href={`/${m}/guides`}
-                  className="inline-flex items-center border border-line px-7 py-4 text-sm font-medium transition-colors hover:border-brass"
+                  className="inline-flex items-center border border-[#f1efe9]/35 px-7 py-4 text-sm font-medium transition-colors hover:border-brass"
                 >
                   Investor guides
                 </Link>
