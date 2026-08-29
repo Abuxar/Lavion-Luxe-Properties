@@ -179,6 +179,35 @@ which is why those few colours are literals rather than theme tokens.
 but would make the headline — the LCP element and the whole message — depend on
 JavaScript.
 
+## Interactive layer
+
+**Gallery + lightbox.** Listing pages previously rendered `media[0]` only —
+every photo a seller uploaded after the first was invisible. Now a full gallery
+with a thumbnail strip and a lightbox: arrow keys, Escape, focus returned to
+the opener on close, body scroll locked while open. No animation library; this
+is a money page judged on INP.
+
+**Shortlist.** Save any property from the card or the detail page, compare them
+side by side at `/[market]/shortlist`. Kept in `localStorage` rather than behind
+an account, because asking someone to register before saving a second property
+is how you lose them. Every read is wrapped in try/catch — private windows and
+blocked site data throw on access rather than returning empty. The compare
+table computes **price per sq ft**, which is the number that actually separates
+two properties at similar asking prices and which no listing states.
+
+**Mortgage and yield calculator** on every listing. Deposit, rate and term
+sliders with live amortisation, plus gross yield and rent-minus-repayment.
+Defaults differ per market because a 25% deposit is normal in Dubai and unusual
+in London. Gross yield only, and it says so — net needs service charge, agency
+fees and voids that vary per property.
+
+**Theme control.** The token system already supported system / light / dark;
+nothing could set it. Now a three-way toggle with an inline pre-paint script,
+so a saved theme does not flash on every navigation.
+
+**Error boundaries.** `error.tsx` and `not-found.tsx` — previously an
+unexpected throw showed the bare Next.js screen with no chrome and no way back.
+
 ## F09 — monetization
 
 Tiers, promotion pricing, commission arithmetic and paid placement are built.

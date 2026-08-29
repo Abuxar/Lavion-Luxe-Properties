@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Market } from "@lavion/schema";
 import { formatArea, formatPrice, statusLabel } from "@/lib/format";
 import type { ListingSummary } from "@/lib/listings";
+import { SaveButton } from "./shortlist";
 
 /**
  * The card carries the four things a buyer scans for — price, place, size,
@@ -22,13 +23,17 @@ export function ListingCard({
   return (
     <article
       data-reveal
-      className="group relative flex flex-col overflow-hidden border border-line bg-surface transition-colors duration-300 hover:border-brass"
+      className="group relative flex flex-col overflow-hidden border border-line bg-surface transition-[border-color,transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-brass hover:shadow-[0_12px_28px_-18px_rgba(0,0,0,0.45)] motion-reduce:hover:translate-y-0"
     >
       <Link href={href} className="absolute inset-0 z-10" aria-label={listing.title}>
         <span className="sr-only">{listing.title}</span>
       </Link>
 
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-2">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/25 to-transparent"
+        />
         <Image
           src={listing.media[0]?.cloudinaryId ?? "lavion/samples/placeholder"}
           alt={listing.media[0]?.alt ?? listing.title}
@@ -48,10 +53,26 @@ export function ListingCard({
           </div>
         )}
 
+        <SaveButton
+          item={{
+            slug: listing.slug,
+            market: listing.market,
+            title: listing.title,
+            price: listing.price.amount,
+            currency: listing.price.currency,
+            locality: listing.location.locality,
+            city: listing.location.city,
+            bedrooms: listing.bedrooms,
+            bathrooms: listing.bathrooms,
+            sqft: listing.area.canonicalSqft,
+            image: listing.media[0]?.cloudinaryId,
+          }}
+        />
+
         {/* Paid placement must be identifiable as such — this badge is the
             disclosure, and it renders wherever a promoted listing appears. */}
         {listing.promotion && !sold && (
-          <span className="absolute right-3 top-3 label !text-ink bg-brass-wash border border-brass/50 px-2 py-1">
+          <span className="absolute right-14 top-3 label !text-ink bg-brass-wash border border-brass/50 px-2 py-1">
             Featured
           </span>
         )}

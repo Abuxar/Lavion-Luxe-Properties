@@ -4,6 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { evaluateEligibility, MARKETS, type Market } from "@lavion/schema";
 import { EnquiryForm } from "@/components/enquiry-form";
+import { PropertyGallery } from "@/components/property-gallery";
+import { SaveButton } from "@/components/shortlist";
+import { YieldCalculator } from "@/components/yield-calculator";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { routeToAgent } from "@/lib/agents";
@@ -87,23 +90,26 @@ export default async function PropertyPage({
 
         {/* ---------- gallery ---------- */}
         <section className="mx-auto mt-6 max-w-[1400px] px-6">
-          <div className="relative aspect-[16/9] overflow-hidden bg-surface-2">
-            <Image
-              src={listing.media[0]?.cloudinaryId ?? "/samples/placeholder.svg"}
-              alt={listing.media[0]?.alt ?? listing.title}
-              fill
-              priority
-              sizes="(max-width: 1400px) 100vw, 1400px"
-              className="object-cover"
-            />
-            {sold && (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
-                <span className="label !text-paper border border-paper/50 px-4 py-2">
-                  {statusLabel(listing.status)}
-                </span>
-              </div>
-            )}
-          </div>
+          <PropertyGallery
+            title={listing.title}
+            images={
+              listing.media.length
+                ? listing.media.map((mm, i) => ({
+                    src: mm.cloudinaryId,
+                    alt: mm.alt ?? `${listing.title} — photo ${i + 1}`,
+                  }))
+                : [{ src: "/samples/placeholder.svg", alt: listing.title }]
+            }
+            overlay={
+              sold ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/45">
+                  <span className="label !text-paper border border-paper/50 px-4 py-2">
+                    {statusLabel(listing.status)}
+                  </span>
+                </div>
+              ) : undefined
+            }
+          />
         </section>
 
         <div className="mx-auto grid max-w-[1400px] gap-12 px-6 py-12 lg:grid-cols-[1.6fr_1fr]">
@@ -151,6 +157,12 @@ export default async function PropertyPage({
             )}
 
             <ComplianceBlock listing={listing} market={m} />
+
+            <YieldCalculator
+              price={listing.price.amount}
+              currency={listing.price.currency}
+              market={m}
+            />
           </div>
 
           {/* ---------- sidebar ---------- */}
@@ -173,6 +185,22 @@ export default async function PropertyPage({
                 >
                   Enquire on WhatsApp
                 </a>
+                <SaveButton
+                  variant="full"
+                  item={{
+                    slug: listing.slug,
+                    market: m,
+                    title: listing.title,
+                    price: listing.price.amount,
+                    currency: listing.price.currency,
+                    locality: listing.location.locality,
+                    city: listing.location.city,
+                    bedrooms: listing.bedrooms,
+                    bathrooms: listing.bathrooms,
+                    sqft: listing.area.canonicalSqft,
+                    image: listing.media[0]?.cloudinaryId,
+                  }}
+                />
                 <EnquiryForm
                   market={m}
                   listingSlug={listing.slug}

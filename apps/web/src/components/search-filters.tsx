@@ -42,7 +42,7 @@ export function SearchFilters({
   const cur = MARKETS[market].currencySymbol;
 
   return (
-    <div className="border border-line bg-surface">
+    <div className="sticky top-[4.25rem] z-30 border border-line bg-surface/95 backdrop-blur-md">
       {/* Always-visible row: the filters people reach for first. */}
       <div className="flex flex-wrap items-center gap-3 p-4">
         <Select

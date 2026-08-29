@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ShortlistProvider } from "@/components/shortlist";
+import { ThemeScript } from "@/components/theme-script";
 
 const bodoni = Bodoni_Moda({
   variable: "--font-bodoni",
@@ -41,7 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${bodoni.variable} ${hanken.variable} ${jetbrains.variable} h-full`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-paper text-ink">{children}</body>
+      <head>
+        <ThemeScript />
+      </head>
+      <body className="min-h-full flex flex-col bg-paper text-ink">
+        <ShortlistProvider>{children}</ShortlistProvider>
+      </body>
     </html>
   );
 }

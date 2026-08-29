@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { MARKETS, type Market } from "@lavion/schema";
+import { ShortlistLink } from "./shortlist";
+import { ThemeToggle } from "./theme-toggle";
 
 // Resolved at build, not render: reading the clock during prerender would
 // make every page that includes the footer dynamic.
@@ -40,6 +42,8 @@ export function SiteHeader({ market }: { market?: Market }) {
               Search
             </Link>
           )}
+          <ShortlistLink market={market} />
+          <ThemeToggle />
           <Link
             href={`/${market ?? "uk"}/submit`}
             className="label border border-brass/50 bg-brass-wash px-4 py-2 !text-brass transition-colors hover:border-brass"
