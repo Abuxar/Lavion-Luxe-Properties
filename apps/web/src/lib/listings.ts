@@ -28,6 +28,11 @@ export interface ListingSummary {
   location: { locality: string; city: string; freeholdZone?: boolean };
   media: { cloudinaryId: string; alt?: string }[];
   publishedAt?: string;
+  promotion?: {
+    tier: "featured" | "premium" | "spotlight";
+    startsAt: string | Date;
+    expiresAt: string | Date;
+  };
 }
 
 export interface ListingDetail extends ListingSummary {
@@ -247,6 +252,13 @@ async function adminPublished(market: Market): Promise<ListingSummary[]> {
       freeholdZone: l.location.freeholdZone,
     },
     media: l.media.map((m) => ({ cloudinaryId: m.cloudinaryId, alt: m.alt })),
+    promotion: l.promotion
+      ? {
+          tier: l.promotion.tier,
+          startsAt: l.promotion.startsAt,
+          expiresAt: l.promotion.expiresAt,
+        }
+      : undefined,
     publishedAt: l.publishedAt ? new Date(l.publishedAt).toISOString() : undefined,
     description: l.description,
     amenities: l.amenities,

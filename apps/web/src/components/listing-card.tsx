@@ -48,6 +48,14 @@ export function ListingCard({
           </div>
         )}
 
+        {/* Paid placement must be identifiable as such — this badge is the
+            disclosure, and it renders wherever a promoted listing appears. */}
+        {listing.promotion && !sold && (
+          <span className="absolute right-3 top-3 label !text-ink bg-brass-wash border border-brass/50 px-2 py-1">
+            Featured
+          </span>
+        )}
+
         {listing.offPlan && !sold && (
           <span className="absolute left-3 top-3 label !text-ink bg-brass-wash border border-brass/40 px-2 py-1">
             Off-plan

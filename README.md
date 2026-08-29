@@ -179,6 +179,35 @@ which is why those few colours are literals rather than theme tokens.
 but would make the headline — the LCP element and the whole message — depend on
 JavaScript.
 
+## F09 — monetization
+
+Tiers, promotion pricing, commission arithmetic and paid placement are built.
+**Collection is not.** Stripe needs a merchant account per market, does not
+operate in Pakistan at all, and restricts Connect marketplace payouts in the
+UAE — so promotions are recorded `paid: false` and reconciled by hand. The
+arithmetic living in `packages/schema/src/monetization.ts` rather than inside a
+checkout flow that does not exist means it is testable today and the payment
+rail becomes a thin adapter later.
+
+Three tiers (Starter / Professional / Enterprise) with listing allowances,
+included promotions, commission rates and per-market closing fees. Promotion
+pricing is per-market for three placement tiers. `/admin/revenue` shows booked
+promotion revenue **per currency** — never summed across AED, GBP and PKR,
+which would be a meaningless number — plus what a completed sale earns at each
+tier.
+
+### Two rules about paid placement
+
+**It is disclosed.** A promoted listing carries a `Featured` badge everywhere
+it appears. UK consumer-protection rules require paid promotion to be
+identifiable, and every serious portal labels it.
+
+**It never overrides an explicit sort.** Promotion lifts a listing in the
+default order only. Once a visitor has asked for cheapest-first, silently
+reordering that for money is the deceptive pattern — their sort wins. Verified:
+under `sort=price_asc` the promoted listing sorts last, on price, like
+everything else.
+
 ## Search and F01 saved searches
 
 `/[market]/search` is now a real search: area, city, property type, price

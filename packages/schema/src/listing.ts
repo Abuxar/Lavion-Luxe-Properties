@@ -150,6 +150,44 @@ export const PricePoint = z.object({
   at: z.coerce.date(),
 });
 
+/* ---------- F09: promotion ---------- */
+
+/**
+ * Paid placement on a listing.
+ *
+ * Disclosure is not optional. UK consumer-protection rules require paid
+ * promotion to be identifiable as such, and every serious portal labels it —
+ * so `Featured` renders as a visible badge wherever a promoted listing is
+ * boosted, and the boost is never silent.
+ */
+export const PromotionTier = z.enum(["featured", "premium", "spotlight"]);
+export type PromotionTier = z.infer<typeof PromotionTier>;
+
+export const Promotion = z.object({
+  tier: PromotionTier,
+  startsAt: z.coerce.date(),
+  expiresAt: z.coerce.date(),
+  /** What the vendor was charged, in the listing's own currency. */
+  feeAmount: z.number().nonnegative(),
+  feeCurrency: Currency,
+  purchasedBy: z.string(),
+  /** Unpaid promotions still display; billing is reconciled separately. */
+  paid: z.boolean().default(false),
+});
+export type Promotion = z.infer<typeof Promotion>;
+
+/** Search weight per tier. Higher sorts first within its band. */
+export const PROMOTION_WEIGHT: Record<PromotionTier, number> = {
+  spotlight: 30,
+  premium: 20,
+  featured: 10,
+};
+
+export function isPromotionLive(p: Promotion | undefined, now: Date = new Date()): boolean {
+  if (!p) return false;
+  return p.startsAt <= now && p.expiresAt > now;
+}
+
 /* ---------- the listing ---------- */
 
 export const ListingInput = z.object({
@@ -182,6 +220,7 @@ export const ListingInput = z.object({
 
   compliance: Compliance.default({}),
   complianceOverride: ComplianceOverride.optional(),
+  promotion: Promotion.optional(),
   foreignOwnership: ForeignOwnership.optional(),
 
   priceHistory: z.array(PricePoint).default([]),

@@ -1,6 +1,7 @@
 import "server-only";
 import { loadAll, saveAll } from "./submission-store";
 import type { Submission, SubmissionStatus } from "./submissions-types";
+import type { Promotion } from "@lavion/schema";
 import {
   evaluatePublishGates,
   toSqft,
@@ -411,4 +412,31 @@ export async function queueCounts() {
     rejected: all.filter((s) => s.status === "rejected").length,
     overridden: all.filter((s) => s.listing.complianceOverride).length,
   };
+}
+
+/* ---------- F09: promotion ---------- */
+
+export async function promoteListing(id: string, promotion: Promotion) {
+  const all = await read();
+  const s = all.find((x) => x.id === id);
+  if (!s) return null;
+  const updated = { ...s, listing: { ...s.listing, promotion } };
+  await write(all.map((x) => (x.id === id ? updated : x)));
+  return withGates(updated);
+}
+
+export async function clearPromotion(id: string) {
+  const all = await read();
+  const s = all.find((x) => x.id === id);
+  if (!s) return null;
+  const { promotion: _drop, ...listing } = s.listing;
+  const updated = { ...s, listing };
+  await write(all.map((x) => (x.id === id ? updated : x)));
+  return withGates(updated);
+}
+
+/** Every published listing, for the revenue view. */
+export async function publishedSubmissions() {
+  const all = await read();
+  return all.filter((s) => s.status === "approved" && s.listing.status === "published");
 }

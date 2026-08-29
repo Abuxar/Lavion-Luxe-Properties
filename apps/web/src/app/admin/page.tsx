@@ -37,6 +37,12 @@ async function Queue() {
         </div>
         <div className="flex items-center gap-2">
         <Link
+          href="/admin/revenue"
+          className="label border border-line px-4 py-2 transition-colors hover:border-brass"
+        >
+          Revenue
+        </Link>
+        <Link
           href="/admin/alerts"
           className="label border border-line px-4 py-2 transition-colors hover:border-brass"
         >

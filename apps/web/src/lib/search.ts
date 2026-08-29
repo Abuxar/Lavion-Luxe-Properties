@@ -1,4 +1,4 @@
-import type { Market } from "@lavion/schema";
+import { PROMOTION_WEIGHT, isPromotionLive, type Market } from "@lavion/schema";
 import type { ListingSummary } from "./listings";
 
 /**
@@ -136,8 +136,32 @@ export function matches(l: ListingSummary, q: SearchQuery): boolean {
   return true;
 }
 
+/** Live promotion weight, or 0. Expired and future promotions do not boost. */
+export function promotionWeight(l: ListingSummary): number {
+  if (!l.promotion) return 0;
+  const p = {
+    ...l.promotion,
+    startsAt: new Date(l.promotion.startsAt),
+    expiresAt: new Date(l.promotion.expiresAt),
+  };
+  return isPromotionLive(p as never) ? PROMOTION_WEIGHT[l.promotion.tier] : 0;
+}
+
 export function sortListings(rows: ListingSummary[], sort: SortKey): ListingSummary[] {
   const out = [...rows];
+
+  // Paid placement lifts a listing in the DEFAULT order only. Once someone has
+  // explicitly asked for cheapest-first, quietly reordering that for money is
+  // the deceptive pattern regulators and users both object to — their sort
+  // wins, and the Featured badge still discloses the promotion either way.
+  if (sort === "newest") {
+    return out.sort((a, b) => {
+      const w = promotionWeight(b) - promotionWeight(a);
+      if (w !== 0) return w;
+      return (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "");
+    });
+  }
+
   switch (sort) {
     case "price_asc":
       return out.sort((a, b) => a.price.amount - b.price.amount);
