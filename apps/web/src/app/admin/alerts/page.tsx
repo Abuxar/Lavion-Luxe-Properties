@@ -4,6 +4,8 @@ import { isAdmin, isConfigured } from "@/lib/admin-auth";
 import { demandByArea, savedSearchesWithMatches } from "@/lib/saved-searches";
 import { SignInForm } from "../sign-in-form";
 import { ackAction, toggleAction } from "./actions";
+import { DispatchPanel } from "./dispatch-panel";
+import { emailConfigured } from "@/lib/email";
 
 export default function AlertsPage() {
   return (
@@ -17,6 +19,7 @@ async function Gate() {
   if (!(await isAdmin())) return <SignInForm configured={await isConfigured()} />;
 
   const [subs, demand] = await Promise.all([savedSearchesWithMatches(), demandByArea()]);
+  const mailReady = emailConfigured();
   const active = subs.filter((s) => s.active);
   const withNew = active.filter((s) => s.newSlugs.length > 0);
 
@@ -37,19 +40,30 @@ async function Gate() {
         </div>
       </div>
 
-      {/* The scope is stated in the product, not only in the code. Nobody
-          should assume emails are going out when they are not. */}
-      <div className="mt-8 border border-ochre/50 bg-ochre-wash p-5">
-        <p className="label" style={{ color: "var(--color-ochre)" }}>
-          Email dispatch not connected
-        </p>
-        <p className="mt-2 max-w-[70ch] text-sm leading-relaxed">
-          Subscriptions and matching work; sending does not. Until an email
-          provider and a scheduler are wired up, follow up on the matches below
-          by hand, then mark them actioned so the next batch shows only what is
-          genuinely new.
-        </p>
-      </div>
+      {mailReady ? (
+        <div className="mt-8 border border-brass/40 bg-brass-wash p-5">
+          <p className="label !text-brass">Email dispatch connected</p>
+          <p className="mt-2 max-w-[70ch] text-sm leading-relaxed">
+            Alerts can be sent from here. There is still no scheduler, so runs
+            are triggered by hand — a cron job calling the same function is the
+            only piece left.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-8 border border-ochre/50 bg-ochre-wash p-5">
+          <p className="label" style={{ color: "var(--color-ochre)" }}>
+            Email dispatch not connected
+          </p>
+          <p className="mt-2 max-w-[70ch] text-sm leading-relaxed">
+            Subscriptions and matching work; sending does not. Set{" "}
+            <code>RESEND_API_KEY</code> to enable it. Until then, follow up on
+            the matches below by hand and mark them actioned so the next batch
+            shows only what is genuinely new.
+          </p>
+        </div>
+      )}
+
+      <DispatchPanel configured={mailReady} />
 
       <dl className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-3">
         <Count k="Active subscriptions" v={active.length} />

@@ -79,6 +79,10 @@ locally (it is gitignored) and set the same values in the Vercel dashboard.
 | `API_BASE_URL` | Backend origin. Unset in phase 1 — the sample fallback is used |
 | `ADMIN_PASSPHRASE` | Review-queue access, 8+ chars. **Unset seals the queue** |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob — photo upload **and** the submission queue |
+| `RESEND_API_KEY` | Enables alert email. Unset = dispatch reports skipped |
+| `EMAIL_FROM` | Sender, default `Lavion Luxe <noreply@lavionluxe.com>` |
+| `EMAIL_REPLY_TO` | Optional reply-to |
+| `ADMIN_EMAIL` | Seed super-admin address, default `admin@lavionluxe.com` |
 
 **API — later phase, not deployed yet**
 
@@ -260,13 +264,27 @@ sorting, and both the search page and the saved-search matcher call the same
 drift, and a subscriber would be alerted about a property their own search
 excludes. Verified identical output for both paths.
 
-### F01 — scope stated plainly
+### F01 — dispatch
 
-Subscriptions and matching are built. **Email dispatch is not** — it needs a
-provider and a scheduler, neither of which exists yet. Rather than ship a queue
-that silently sends nothing, matches surface in `/admin/alerts` so the team can
-act on them by hand today; dispatch later becomes a layer on top, not a
-rewrite. The admin page says so on the page itself, not just in this file.
+Subscriptions, matching and **sending** are all built. Dispatch is written
+against a provider interface rather than a vendor SDK, and talks to Resend over
+plain fetch — their send API is one POST, so a package that would sit unused
+until a key exists is not worth the dependency.
+
+Set `RESEND_API_KEY` and it sends; leave it unset and every subscription comes
+back `skipped` rather than a success nobody received. The admin page reflects
+whichever is true rather than a hardcoded warning.
+
+A subscription is acknowledged **only after the provider accepts its email**.
+Marking first would mean an outage silently swallows the one batch a subscriber
+was waiting for, and nothing would ever resend it.
+
+Still no scheduler, so runs are triggered from `/admin/alerts`. A cron calling
+`dispatchSavedSearchAlerts()` is the only piece left.
+
+Emails carry a plain-text alternative, no external assets, inline styles and
+table layout — email clients are not browsers — and every interpolated value is
+escaped.
 
 Everything already listed when someone subscribes is recorded as seen, so the
 first batch is genuinely *new since you subscribed* rather than the whole
