@@ -440,3 +440,70 @@ export async function publishedSubmissions() {
   const all = await read();
   return all.filter((s) => s.status === "approved" && s.listing.status === "published");
 }
+
+/* ---------- feed ingestion ---------- */
+
+/**
+ * Upserts one imported listing, matched on the agency's own externalRef.
+ *
+ * Matching on externalRef rather than slug is the point: slugs derive from the
+ * title, so a vendor editing their headline would otherwise create a duplicate
+ * on the next sync. An update also deliberately preserves our own review
+ * decision and any promotion — a re-sync refreshes the agency's data, it does
+ * not undo an admin's judgement or wipe paid placement.
+ */
+export async function importFeedListing(input: {
+  listing: ListingInput;
+  externalRef: string;
+  feedSourceId: string;
+  agencyName: string;
+  publish: boolean;
+}): Promise<{ action: "created" | "updated"; submission: SubmissionWithGates }> {
+  const all = await read();
+
+  const existing = all.find(
+    (s) =>
+      s.listing.feedSourceId === input.feedSourceId &&
+      s.listing.externalRef === input.externalRef,
+  );
+
+  if (existing) {
+    const updated: Submission = {
+      ...existing,
+      listing: {
+        ...input.listing,
+        // Preserve decisions the feed has no business overwriting.
+        status: existing.listing.status,
+        publishedAt: existing.listing.publishedAt,
+        promotion: existing.listing.promotion,
+        complianceOverride: existing.listing.complianceOverride,
+        priceHistory: [
+          ...(existing.listing.priceHistory ?? []),
+          ...(existing.listing.price.amount !== input.listing.price.amount
+            ? [{ amount: input.listing.price.amount, at: new Date() }]
+            : []),
+        ],
+      },
+    };
+    await write(all.map((s) => (s.id === existing.id ? updated : s)));
+    return { action: "updated", submission: withGates(updated) };
+  }
+
+  const submission: Submission = {
+    id: nextId(all),
+    submittedAt: new Date().toISOString(),
+    submitterName: input.agencyName,
+    submitterEmail: "—",
+    status: input.publish ? "approved" : "pending_review",
+    listing: {
+      ...input.listing,
+      source: "feed_import",
+      status: input.publish ? "published" : "pending_review",
+      ...(input.publish ? { publishedAt: new Date() } : {}),
+      priceHistory: [{ amount: input.listing.price.amount, at: new Date() }],
+    },
+  };
+
+  await write([...all, submission]);
+  return { action: "created", submission: withGates(submission) };
+}

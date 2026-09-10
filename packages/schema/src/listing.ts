@@ -200,6 +200,15 @@ export const ListingInput = z.object({
   market: Market,
 
   ownerAgencyId: z.string().optional(),
+  /**
+   * The agency's own identifier for this property.
+   *
+   * Dedup key for feed re-syncs. Deliberately not the slug: slugs are derived
+   * from the title, so a vendor editing their headline would otherwise create
+   * a duplicate listing on every sync.
+   */
+  externalRef: z.string().optional(),
+  feedSourceId: z.string().optional(),
   agents: z
     .array(z.object({ agentId: z.string(), territory: z.string() }))
     .default([]),

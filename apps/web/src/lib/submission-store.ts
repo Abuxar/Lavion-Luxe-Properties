@@ -70,7 +70,9 @@ function configured(): boolean {
 }
 
 export async function loadAll(seed: Submission[]): Promise<Submission[]> {
-  if (!configured()) return seed;
+  // With no Blob token, the in-memory copy is the only store there is —
+  // returning the seed here would discard every write made this run.
+  if (!configured()) return memo?.data ?? seed;
 
   if (memo && Date.now() - memo.at < MEMO_MS) return memo.data;
 
@@ -97,6 +99,11 @@ export async function loadAll(seed: Submission[]): Promise<Submission[]> {
 }
 
 export async function saveAll(subs: Submission[]): Promise<void> {
+  // Update the in-instance copy FIRST, before the configured check. Returning
+  // early used to discard the write entirely when no Blob token was present,
+  // so a local dev run reported "created" and then read back nothing.
+  // blob-collection.ts already behaved this way; these are now consistent.
+  memo = { at: Date.now(), data: subs };
   if (!configured()) return;
   try {
     await put(KEY, JSON.stringify(subs), {
@@ -107,10 +114,8 @@ export async function saveAll(subs: Submission[]): Promise<void> {
       // Never let the CDN serve a stale queue back to us.
       cacheControlMaxAge: 0,
     });
-    memo = { at: Date.now(), data: subs };
   } catch {
-    // Keep the in-instance copy so the current request still behaves.
-    memo = { at: Date.now(), data: subs };
+    // Remote write failed; the in-instance copy above still serves this request.
   }
 }
 

@@ -274,6 +274,38 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Feed ingestion — the aggregator
+
+`/admin/feeds`. Inventory from agencies who do not manage a dashboard, pulled
+from a file they already produce. UK agencies generate portal feeds for
+Rightmove and Zoopla today, so asking for the same export is a normal
+commercial conversation — and it is the only lawful route. Scraping a
+competitor is a terms-of-service and copyright problem that also breaks the
+moment they change their markup.
+
+CSV and JSON, with a per-source column mapping (`ourField=theirColumn`) so an
+agency never has to rename anything. The CSV reader is hand-rolled to RFC 4180
+rather than a `split(",")`: property descriptions routinely contain commas,
+escaped quotes and embedded newlines, and those are exactly the rows a naive
+parser corrupts.
+
+**Two rules the pipeline is built around.**
+
+*Imports are not a back door.* Every row runs the same publish gates as a
+hand-typed listing. A Dubai row without a DLD permit is held in review even
+when the source has auto-publish enabled — bulk is precisely where a compliance
+bypass would do the most damage. Verified.
+
+*Re-syncing updates rather than duplicates,* matched on the agency's own
+`externalRef` and not the slug — slugs derive from the title, so a vendor
+editing their headline would otherwise create a copy on every sync. An update
+preserves our review decision, any promotion, and appends to price history
+rather than overwriting it.
+
+Every run reports per row. "Imported 40 of 60" without saying which twenty
+failed is not actionable, and quietly losing a fifth of a catalogue is how a
+portal loses the agency. Dry-run previews parse and report without writing.
+
 ## F02 / F08 — leads
 
 Until now the site could not capture a lead: "Request a viewing" was an inert

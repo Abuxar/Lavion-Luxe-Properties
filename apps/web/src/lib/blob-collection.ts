@@ -34,7 +34,9 @@ export function createBlobCollection<T>(opts: {
   const configured = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
   async function all(): Promise<T[]> {
-    if (!configured()) return seed;
+    // With no Blob token the memo is the only store — returning the seed here
+    // would discard every write made this run.
+    if (!configured()) return memo?.data ?? seed;
     if (memo && Date.now() - memo.at < memoMs) return memo.data;
 
     try {
