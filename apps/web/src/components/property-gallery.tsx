@@ -94,7 +94,11 @@ export function PropertyGallery({
           alt={current.alt}
           fill
           priority
-          sizes="(max-width: 1400px) 100vw, 1400px"
+          // Full width only while the layout is stacked. From lg the gallery
+          // is the 1.6fr track of a 1.6/1 grid, so it is roughly 58% of the
+          // viewport — claiming 100vw here would fetch a file about three
+          // times the pixels needed on the LCP image.
+          sizes="(max-width: 1024px) 100vw, (max-width: 1400px) 60vw, 840px"
           className="object-cover transition-opacity duration-300"
         />
 

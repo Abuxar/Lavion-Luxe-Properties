@@ -89,34 +89,44 @@ export default async function PropertyPage({
           </nav>
         </div>
 
-        {/* ---------- gallery ---------- */}
-        <section className="mx-auto mt-6 max-w-[1400px] px-6">
-          <PropertyGallery
-            title={listing.title}
-            images={
-              listing.media.length
-                ? listing.media.map((mm, i) => ({
-                    src: mm.cloudinaryId,
-                    alt: mm.alt ?? `${listing.title} — photo ${i + 1}`,
-                  }))
-                : [{ src: "/samples/placeholder.svg", alt: listing.title }]
-            }
-            overlay={
-              sold ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/45">
-                  <span className="label !text-paper border border-paper/50 px-4 py-2">
-                    {statusLabel(listing.status)}
-                  </span>
-                </div>
-              ) : undefined
-            }
-          />
-        </section>
+        {/*
+          The gallery sits INSIDE the content column, not above it.
 
-        <div className="mx-auto grid max-w-[1400px] gap-12 px-6 py-12 lg:grid-cols-[1.6fr_1fr]">
+          Spanning the full 1400px meant a photo 1318px wide on a laptop — the
+          whole first screen was one image, and the price and enquiry form were
+          below the fold no matter how the height was capped. Narrowing it
+          without moving it would only have traded a too-wide photo for a band
+          of dead space beside it.
+
+          In the column it is about 780px on a laptop, and the sticky price
+          panel it now sits beside fills the room it gave up. That is the
+          layout every property portal converges on, for this reason.
+        */}
+        <div className="mx-auto grid max-w-[1400px] gap-12 px-6 pb-12 pt-6 lg:grid-cols-[1.6fr_1fr]">
           {/* ---------- body: cached, part of the static shell ---------- */}
           <div className="min-w-0">
-            <p className="label">
+            <PropertyGallery
+              title={listing.title}
+              images={
+                listing.media.length
+                  ? listing.media.map((mm, i) => ({
+                      src: mm.cloudinaryId,
+                      alt: mm.alt ?? `${listing.title} — photo ${i + 1}`,
+                    }))
+                  : [{ src: "/samples/placeholder.svg", alt: listing.title }]
+              }
+              overlay={
+                sold ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/45">
+                    <span className="label !text-paper border border-paper/50 px-4 py-2">
+                      {statusLabel(listing.status)}
+                    </span>
+                  </div>
+                ) : undefined
+              }
+            />
+
+            <p className="label mt-8">
               {listing.category} · {TRANSACTION_LABEL[listing.transaction]}
               {listing.offPlan && " · Off-plan"}
             </p>
