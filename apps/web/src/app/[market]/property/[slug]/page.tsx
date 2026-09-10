@@ -6,7 +6,7 @@ import { evaluateEligibility, MARKETS, type Market } from "@lavion/schema";
 import { EnquiryForm } from "@/components/enquiry-form";
 import { PropertyGallery } from "@/components/property-gallery";
 import { SaveButton } from "@/components/shortlist";
-import { YieldCalculator } from "@/components/yield-calculator";
+import { LazyYieldCalculator } from "@/components/lazy-yield-calculator";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { routeToAgent } from "@/lib/agents";
@@ -158,7 +158,7 @@ export default async function PropertyPage({
 
             <ComplianceBlock listing={listing} market={m} />
 
-            <YieldCalculator
+            <LazyYieldCalculator
               price={listing.price.amount}
               currency={listing.price.currency}
               market={m}

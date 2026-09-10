@@ -132,6 +132,9 @@ async function Results({
         </div>
       ) : (
         <>
+          {/* Cards render an h3, so without this the page jumps h1 -> h3.
+              The results region needs a name for screen readers anyway. */}
+          <h2 className="sr-only">Search results</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((l, i) => (
               <ListingCard key={l.slug} listing={l} priority={i < 3} />
