@@ -19,27 +19,48 @@ const MARKET_ORDER: Market[] = ["uk", "ae", "pk"];
  * actions onto a second row fixes both without a hamburger, which for four
  * destinations would hide navigation behind a tap for no gain.
  */
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+  );
+}
+
+/**
+ * Two rows below lg, one from lg.
+ *
+ * The single row overflowed every phone width — the action cluster alone
+ * measured 338px inside a 375px viewport — and the market switcher was hidden
+ * below md, so a phone visitor could not change market at all.
+ *
+ * Row two is sized to FIT at 360px rather than scroll: a horizontally
+ * scrollable nav hides its last item, and the last item here is the listing
+ * call to action. Search moves up to row one as an icon to make that room,
+ * which is also where a phone user expects it — beside the other controls
+ * rather than buried in a strip.
+ */
 export function SiteHeader({ market }: { market?: Market }) {
   const m = market ?? "uk";
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
-        {/* Row one: identity, and the two controls worth reaching for first. */}
-        <div className="flex items-center gap-4 py-2.5 sm:gap-6 sm:py-4">
+        {/* Row one: identity and the always-available controls. */}
+        <div className="flex items-center gap-3 py-2.5 sm:gap-6 sm:py-4">
           <Link href={market ? `/${market}` : "/"} className="shrink-0">
             <span className="font-display text-lg tracking-tight sm:text-xl">{BRAND_NAME}</span>
             <span className="sr-only">— home</span>
           </Link>
 
-          {/* Markets sit inline from sm up; below that they move to row two. */}
-          <nav aria-label="Markets" className="ml-1 hidden items-center gap-1 sm:flex">
+          <nav aria-label="Markets" className="ml-1 hidden items-center gap-1 lg:flex">
             {MARKET_ORDER.map((x) => (
               <Link
                 key={x}
                 href={`/${x}`}
                 aria-current={market === x ? "page" : undefined}
-                className={`label px-2.5 py-2 transition-colors hover:text-ink lg:px-3 ${
+                className={`label px-3 py-2 transition-colors hover:text-ink ${
                   market === x ? "!text-brass" : ""
                 }`}
               >
@@ -49,16 +70,24 @@ export function SiteHeader({ market }: { market?: Market }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <ShortlistLink market={market} />
-            <ThemeToggle />
-
-            {/* Full-width actions belong on row two on a phone. */}
+            {/* Icon-only below lg, labelled from lg where there is room. */}
+            <Link
+              href={`/${m}/search`}
+              aria-label="Search properties"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center border border-line transition-colors hover:border-brass lg:hidden"
+            >
+              <SearchIcon />
+            </Link>
             <Link
               href={`/${m}/search`}
               className="label hidden border border-line px-4 py-2 transition-colors hover:border-brass hover:text-ink lg:block"
             >
               Search
             </Link>
+
+            <ShortlistLink market={market} />
+            <ThemeToggle />
+
             <Link
               href={`/${m}/submit`}
               className="label hidden border border-brass/50 bg-brass-wash px-4 py-2 !text-brass transition-colors hover:border-brass lg:block"
@@ -68,16 +97,15 @@ export function SiteHeader({ market }: { market?: Market }) {
           </div>
         </div>
 
-        {/* Row two, below lg. Scrolls rather than wrapping, so the header keeps
-            a predictable height and never reflows the sticky offset. */}
-        <div className="-mx-4 flex items-center gap-2 overflow-x-auto border-t border-line px-4 py-1.5 sm:-mx-6 sm:px-6 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <nav aria-label="Markets" className="flex items-center gap-1 sm:hidden">
+        {/* Row two, below lg. Sized to fit 360px, so nothing is hidden. */}
+        <div className="-mx-4 flex items-center gap-1.5 border-t border-line px-4 py-1.5 sm:-mx-6 sm:gap-2 sm:px-6 lg:hidden">
+          <nav aria-label="Markets" className="flex items-center gap-1.5 sm:gap-2">
             {MARKET_ORDER.map((x) => (
               <Link
                 key={x}
                 href={`/${x}`}
                 aria-current={market === x ? "page" : undefined}
-                className={`label shrink-0 border px-3 py-2 transition-colors ${
+                className={`label shrink-0 border px-2 py-2 transition-colors sm:px-3 ${
                   market === x
                     ? "border-brass/50 bg-brass-wash !text-brass"
                     : "border-line hover:border-brass"
@@ -89,20 +117,8 @@ export function SiteHeader({ market }: { market?: Market }) {
           </nav>
 
           <Link
-            href={`/${m}/search`}
-            className="label shrink-0 border border-line px-3 py-2 transition-colors hover:border-brass"
-          >
-            Search
-          </Link>
-          <Link
-            href={`/${m}/guides`}
-            className="label shrink-0 border border-line px-3 py-2 transition-colors hover:border-brass"
-          >
-            Guides
-          </Link>
-          <Link
             href={`/${m}/submit`}
-            className="label shrink-0 border border-brass/50 bg-brass-wash px-3 py-2 !text-brass transition-colors hover:border-brass"
+            className="label ml-auto shrink-0 truncate border border-brass/50 bg-brass-wash px-3 py-2 !text-brass transition-colors hover:border-brass"
           >
             List your property
           </Link>
