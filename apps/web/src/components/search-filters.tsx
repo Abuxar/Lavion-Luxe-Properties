@@ -190,12 +190,24 @@ function Select({
   options: { value: string; label: string }[];
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    /*
+      min-w-0 and w-full are what keep this on the page at 360px.
+
+      A <select> is intrinsically as wide as its widest <option>, and as a flex
+      item it will not shrink below that on its own. Pakistan has area names
+      like "Bahria Town Phase 8", so the control pushed the filter row 27px
+      past the viewport and took the whole document with it — while the same
+      row in the UAE, with shorter names, fitted and looked fine.
+
+      truncate keeps the closed control from re-widening; the dropdown itself
+      still shows each option in full.
+    */
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="label">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-line bg-paper px-3 py-2 text-sm outline-none focus-visible:border-brass"
+        className="w-full min-w-0 truncate border border-line bg-paper px-3 py-2 text-sm outline-none focus-visible:border-brass"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -218,7 +230,7 @@ function NumberField({
 }) {
   const [local, setLocal] = useState(value ? String(value) : "");
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="label">{label}</span>
       <input
         type="number"
@@ -234,7 +246,7 @@ function NumberField({
             onCommit(local ? Number(local) : undefined);
           }
         }}
-        className="border border-line bg-paper px-3 py-2 text-sm tabular-nums outline-none focus-visible:border-brass"
+        className="w-full min-w-0 border border-line bg-paper px-3 py-2 text-sm tabular-nums outline-none focus-visible:border-brass"
       />
     </label>
   );

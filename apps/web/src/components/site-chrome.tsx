@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MARKETS, type Market } from "@lavion/schema";
 import { ShortlistLink } from "./shortlist";
+import { WhatsAppFab } from "./whatsapp-fab";
 import { ThemeToggle } from "./theme-toggle";
 import { BRAND_FULL_NAME, BRAND_NAME } from "@/lib/brand";
 
@@ -131,6 +132,13 @@ export function SiteHeader({ market }: { market?: Market }) {
 export function SiteFooter({ market }: { market?: Market }) {
   const active = market ?? "uk";
   return (
+    <>
+      {/*
+        Mounted here rather than in the root layout on purpose: the layout also
+        wraps /admin and /agency, and a public enquiry button has no business
+        on a staff console. Every public page renders this footer.
+      */}
+      <WhatsAppFab context={market ? MARKETS[market].label : undefined} />
     <footer className="mt-24 border-t border-line bg-surface">
       <div className="mx-auto max-w-[1400px] px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
@@ -199,5 +207,6 @@ export function SiteFooter({ market }: { market?: Market }) {
         </div>
       </div>
     </footer>
+    </>
   );
 }

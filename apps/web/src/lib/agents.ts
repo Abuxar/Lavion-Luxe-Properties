@@ -1,5 +1,6 @@
 import type { Market } from "@lavion/schema";
 import { brandEmail } from "./brand";
+import { WHATSAPP_E164 } from "./contact";
 
 /**
  * F08 — agents and their territories.
@@ -10,6 +11,12 @@ import { brandEmail } from "./brand";
  * somewhere, and lands as precisely as the roster allows.
  *
  * Static for now; becomes an Atlas collection with the rest.
+ *
+ * Every phone here was a made-up placeholder (+442071234567 and friends), so
+ * a WhatsApp enquiry opened a chat with nobody. Until there is a real roster
+ * they all point at the one line that is actually answered. Each agent keeps
+ * its own field rather than sharing one, so handing a territory to a real
+ * agent later is a one-line change and not a refactor.
  */
 export interface Agent {
   id: string;
@@ -33,7 +40,7 @@ export const AGENTS: Agent[] = [
     market: "uk",
     localities: ["Chelsea", "Marylebone", "Wapping"],
     cities: ["London"],
-    phone: "+442071234567",
+    phone: WHATSAPP_E164,
     email: brandEmail("london"),
     languages: ["English"],
   },
@@ -44,7 +51,7 @@ export const AGENTS: Agent[] = [
     market: "uk",
     localities: [],
     cities: [],
-    phone: "+442071234568",
+    phone: WHATSAPP_E164,
     email: brandEmail("uk"),
     languages: ["English"],
   },
@@ -55,7 +62,7 @@ export const AGENTS: Agent[] = [
     market: "ae",
     localities: ["Dubai Marina", "Dubai Creek Harbour", "Dubai Maritime City"],
     cities: ["Dubai"],
-    phone: "+971501234567",
+    phone: WHATSAPP_E164,
     email: brandEmail("marina"),
     languages: ["English", "Arabic"],
   },
@@ -66,7 +73,7 @@ export const AGENTS: Agent[] = [
     market: "ae",
     localities: [],
     cities: [],
-    phone: "+971501234568",
+    phone: WHATSAPP_E164,
     email: brandEmail("uae"),
     languages: ["English", "Arabic"],
   },
@@ -77,7 +84,7 @@ export const AGENTS: Agent[] = [
     market: "pk",
     localities: ["DHA Phase 6", "Bahria Town Phase 8"],
     cities: ["Lahore", "Rawalpindi"],
-    phone: "+923001234567",
+    phone: WHATSAPP_E164,
     email: brandEmail("lahore"),
     languages: ["English", "Urdu", "Punjabi"],
   },
@@ -88,7 +95,7 @@ export const AGENTS: Agent[] = [
     market: "pk",
     localities: [],
     cities: [],
-    phone: "+923001234568",
+    phone: WHATSAPP_E164,
     email: brandEmail("pakistan"),
     languages: ["English", "Urdu"],
   },
