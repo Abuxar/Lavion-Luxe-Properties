@@ -84,6 +84,31 @@
 }
 
 @layer base {
+  /*
+   * Real measured header height per breakpoint, so sticky offsets and scroll
+   * anchors land correctly instead of letting content slide under the bar.
+   *
+   * Two rows below lg, one from lg. The sm-to-lg band is the tallest because
+   * the market nav moves inline into row one while row two is still present.
+   * Values round up a little: a few pixels of clearance is invisible, a few
+   * pixels short hides the top of whatever is stuck.
+   */
+  :root {
+    --header-h: 6.5rem; /* measured 103px */
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --header-h: 7.25rem; /* measured 115px */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --header-h: 4.25rem; /* measured 68px */
+    }
+  }
+
   html {
     scroll-behavior: smooth;
   }

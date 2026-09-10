@@ -101,7 +101,7 @@ export function YieldCalculator({
       <p className="label !text-brass">Run the numbers</p>
       <h2 className="mt-3 font-display text-2xl">Mortgage and yield</h2>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="flex flex-col gap-5">
           <Slider
             label="Deposit"
@@ -228,9 +228,9 @@ function Figure({
       : "var(--color-ink)";
 
   return (
-    <div className="flex items-baseline justify-between gap-4 bg-paper p-4">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 bg-paper p-4">
       <span className="label">{k}</span>
-      <span className="font-display text-xl tabular-nums" style={{ color }}>
+      <span className="font-display text-xl tabular-nums break-words" style={{ color }}>
         {v}
       </span>
     </div>

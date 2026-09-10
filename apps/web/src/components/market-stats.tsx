@@ -57,7 +57,7 @@ export async function MarketStats({ market }: { market: Market }) {
   return (
     <section
       id="overview"
-      className="scroll-mt-[4.25rem] border-b border-line bg-surface"
+      className="scroll-mt-[var(--header-h,4.25rem)] border-b border-line bg-surface"
       aria-label={`${MARKETS[market].label} at a glance`}
     >
       <dl className="mx-auto grid max-w-[1400px] grid-cols-2 gap-px bg-line sm:grid-cols-4 lg:grid-cols-5">

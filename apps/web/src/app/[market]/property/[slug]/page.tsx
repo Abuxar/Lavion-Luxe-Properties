@@ -115,7 +115,7 @@ export default async function PropertyPage({
 
         <div className="mx-auto grid max-w-[1400px] gap-12 px-6 py-12 lg:grid-cols-[1.6fr_1fr]">
           {/* ---------- body: cached, part of the static shell ---------- */}
-          <div>
+          <div className="min-w-0">
             <p className="label">
               {listing.category} · {TRANSACTION_LABEL[listing.transaction]}
               {listing.offPlan && " · Off-plan"}
@@ -167,7 +167,7 @@ export default async function PropertyPage({
           </div>
 
           {/* ---------- sidebar ---------- */}
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
             <div className="border border-line bg-surface p-7">
               {/* Price and availability are the volatile fields — they stream
                   at request time while everything above is prerendered. */}
