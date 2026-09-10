@@ -65,7 +65,7 @@ export default async function GuidePage({ params }: PageProps<"/[market]/guides/
             <Link href={`/${m}`} className="hover:text-brass">
               {MARKETS[m].label}
             </Link>
-            <span className="mx-2 text-line-strong">/</span>
+            <span className="mx-2 text-ink-faint">/</span>
             <Link href={`/${m}/guides`} className="hover:text-brass">
               Guides
             </Link>

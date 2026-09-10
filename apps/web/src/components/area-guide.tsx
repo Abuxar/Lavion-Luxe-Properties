@@ -53,13 +53,13 @@ export function AreaGuideView({ guide }: { guide: AreaGuide }) {
               <Link href={`/${m}`} className="hover:text-brass">
                 {MARKETS[m].label}
               </Link>
-              <span className="mx-2 text-line-strong">/</span>
+              <span className="mx-2 text-ink-faint">/</span>
               {locality ? (
                 <>
                   <Link href={`/${m}/for-sale/${citySlug}`} className="hover:text-brass">
                     {city}
                   </Link>
-                  <span className="mx-2 text-line-strong">/</span>
+                  <span className="mx-2 text-ink-faint">/</span>
                   <span className="text-ink-soft">{locality}</span>
                 </>
               ) : (

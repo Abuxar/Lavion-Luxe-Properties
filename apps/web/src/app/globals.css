@@ -16,24 +16,43 @@
   --font-mono: var(--font-jetbrains), ui-monospace, Menlo, monospace;
 
   /* light: limestone + petrol ink */
-  --color-paper: #f1efea;
-  --color-surface: #f9f8f5;
-  --color-surface-2: #e6e3db;
-  --color-ink: #0f1d1f;
-  --color-ink-soft: #4a5654;
-  --color-ink-faint: #7d8785;
-  --color-line: #d8d4ca;
-  --color-line-strong: #bab5a8;
+  /*
+   * Light theme.
+   *
+   * Two things were wrong before and both were measured, not guessed:
+   *
+   * 1. ink-faint (#7d8785) landed at 3.2:1 on paper and 3.5:1 on surface,
+   *    under the 4.5:1 needed for body text — and it carries the .label class,
+   *    which is on almost every page. brass was under too, at 4.3:1 on paper
+   *    and 3.9:1 on its own wash. That is why headings and small print read as
+   *    half-there rather than quiet.
+   *
+   * 2. Near-black ink on a 94%-luminance surface put the page at 15:1. That is
+   *    past what is comfortable to read for any length of time — correct by
+   *    the guideline, which only sets a floor, and glaring in practice.
+   *
+   * So: surfaces come down to 90% luminance and warm slightly, ink lifts off
+   * black, and the muted tones darken until they actually pass. Body text now
+   * sits at 12.3:1 — well clear of the 7:1 AAA bar, without the glare.
+   */
+  --color-paper: #eeeae1;
+  --color-surface: #f6f3ec;
+  --color-surface-2: #e0dbd0;
+  --color-ink: #182b2d;
+  --color-ink-soft: #404b49;
+  --color-ink-faint: #576260;
+  --color-line: #d3cec3;
+  --color-line-strong: #a8a294;
 
-  --color-brass: #8c6a32;
-  --color-brass-soft: #b8945a;
-  --color-brass-wash: #ece4d3;
+  --color-brass: #7a5b26;
+  --color-brass-soft: #9c7a3f;
+  --color-brass-wash: #e9e0cd;
 
-  --color-petrol: #2b5d5b;
-  --color-petrol-wash: #dfe9e7;
+  --color-petrol: #245250;
+  --color-petrol-wash: #dae7e5;
 
-  --color-signal: #8c3a2f;
-  --color-signal-wash: #f0e0dc;
+  --color-signal: #8a3327;
+  --color-signal-wash: #f0ded9;
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }

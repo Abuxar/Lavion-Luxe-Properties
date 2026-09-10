@@ -72,14 +72,14 @@ export default async function PropertyPage({
             <Link href={`/${m}`} className="hover:text-brass">
               {MARKETS[m].label}
             </Link>
-            <span className="mx-2 text-line-strong">/</span>
+            <span className="mx-2 text-ink-faint">/</span>
             <Link
               href={`/${m}/for-sale/${slugify(listing.location.city)}`}
               className="hover:text-brass"
             >
               {listing.location.city}
             </Link>
-            <span className="mx-2 text-line-strong">/</span>
+            <span className="mx-2 text-ink-faint">/</span>
             <Link
               href={`/${m}/for-sale/${slugify(listing.location.city)}/${slugify(listing.location.locality)}`}
               className="hover:text-brass"

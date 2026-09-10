@@ -83,7 +83,12 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
 
           <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-24 pt-16 text-[#f1efe9]">
             <div className="max-w-4xl">
-              <p data-rise="1" className="label">
+              {/*
+                .label pins its own colour to --color-ink-faint, which is dark
+                in the light theme. This sits on a photograph, not on paper, so
+                it has to opt out or it disappears against the image.
+              */}
+              <p data-rise="1" className="label !text-[#c7cfcb]">
                 {copy.eyebrow}
               </p>
               <h1
