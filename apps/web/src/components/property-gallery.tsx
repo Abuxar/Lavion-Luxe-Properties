@@ -68,7 +68,27 @@ export function PropertyGallery({
 
   return (
     <>
-      <div className="relative aspect-[16/9] overflow-hidden bg-surface-2">
+      {/*
+        Height is capped, not just proportional.
+
+        A 16/9 box inside the 1400px column is 741px tall on a 1366px laptop —
+        taller than the visible viewport, so the photo was the entire first
+        screen and the price, address and enquiry form all sat below the fold.
+        An aspect ratio alone cannot prevent that: the wider the display, the
+        taller it gets.
+
+        So the ratio sets the shape and the cap sets the ceiling. Phones get a
+        4/3 frame, which suits a portrait screen; the ratio widens with the
+        viewport; and above roughly a laptop the cap takes over so the image
+        never grows past about two thirds of the fold. object-cover means the
+        cap crops rather than distorts.
+
+        w-full is load-bearing, not habit. With width left auto, a capped
+        max-height makes the browser shrink the WIDTH to keep the ratio — the
+        box came out 756px wide inside a 1318px column, floating in dead space.
+        Pinning the width means the cap trims height, which is what was wanted.
+      */}
+      <div className="relative w-full aspect-[4/3] max-h-[min(72svh,640px)] overflow-hidden bg-surface-2 sm:aspect-[3/2] lg:aspect-[16/9]">
         <Image
           src={current.src}
           alt={current.alt}
