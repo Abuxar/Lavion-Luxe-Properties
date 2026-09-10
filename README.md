@@ -201,9 +201,13 @@ Defaults differ per market because a 25% deposit is normal in Dubai and unusual
 in London. Gross yield only, and it says so — net needs service charge, agency
 fees and voids that vary per property.
 
-**Theme control.** The token system already supported system / light / dark;
-nothing could set it. Now a three-way toggle with an inline pre-paint script,
-so a saved theme does not flash on every navigation.
+**Theme control.** Light and dark, nothing else — a two-state switch, not a
+three-way with an "auto" option to pick. The system preference still chooses
+the *initial* theme on a first visit so nobody lands in the wrong one, but once
+a visitor chooses it sticks. An inline pre-paint script stamps the theme before
+first paint so a saved choice does not flash on every navigation; the script
+and the toggle read the same two sources in the same order, so they cannot
+disagree about what the initial theme is.
 
 **Error boundaries.** `error.tsx` and `not-found.tsx` — previously an
 unexpected throw showed the bare Next.js screen with no chrome and no way back.
