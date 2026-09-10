@@ -4,6 +4,7 @@ import { MARKETS, type Market } from "@lavion/schema";
 import { GateChip } from "@/components/gate-report";
 import { isAdmin, isConfigured } from "@/lib/admin-auth";
 import { formatPrice } from "@/lib/format";
+import { isDurable } from "@/lib/submission-store";
 import { listSubmissions, queueCounts } from "@/lib/submissions";
 import { SignInForm } from "./sign-in-form";
 import { signOutAction } from "./actions";
@@ -25,6 +26,7 @@ async function Gate() {
 
 async function Queue() {
   const [subs, counts] = await Promise.all([listSubmissions(), queueCounts()]);
+  const durable = isDurable();
   const pending = subs.filter((s) => s.status === "pending_review");
   const decided = subs.filter((s) => s.status !== "pending_review");
 
@@ -166,9 +168,13 @@ async function Queue() {
       )}
 
       <p className="mt-12 border-t border-line pt-6 text-xs leading-relaxed text-ink-faint">
-        Phase 1: submissions are held in memory and reset when the server
-        instance recycles. {MARKETS.ae.label} listings additionally require a
-        live DLD permit before they can be published.
+        {durable
+          ? "Submissions are stored durably and survive deploys and instance recycles."
+          : "WARNING — no Blob token is configured, so submissions are held in memory only and will be lost. Set BLOB_READ_WRITE_TOKEN."}{" "}
+        A listing is filed under the market of the page it was submitted from,
+        so a property entered on the wrong market page carries that
+        market&rsquo;s currency. {MARKETS.ae.label} listings additionally
+        require a live DLD permit before they can be published.
       </p>
     </main>
   );
