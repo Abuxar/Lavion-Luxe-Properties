@@ -2,6 +2,7 @@ import "server-only";
 import PDFDocument from "pdfkit";
 import { MARKETS, type Market } from "@lavion/schema";
 import type { GuideWithRules } from "./guides";
+import { BRAND_DOMAIN, BRAND_FULL_NAME, BRAND_MARK } from "./brand";
 
 /**
  * Renders a guide to PDF from the same ComplianceRule records the web page
@@ -30,7 +31,7 @@ export async function buildGuidePdf(
     margins: { top: M, bottom: M, left: M, right: M },
     info: {
       Title: guide.title,
-      Author: "Lavion Luxe Properties",
+      Author: BRAND_FULL_NAME,
       Subject: guide.standfirst,
       Keywords: `property, ${MARKETS[market].label}, investment`,
     },
@@ -49,7 +50,7 @@ export async function buildGuidePdf(
   };
 
   /* ---------- masthead ---------- */
-  doc.fillColor(FAINT).font("Helvetica").fontSize(8).text("LAVION LUXE PROPERTIES", { characterSpacing: 2 });
+  doc.fillColor(FAINT).font("Helvetica").fontSize(8).text(BRAND_MARK, { characterSpacing: 2 });
   doc.moveDown(0.4);
   doc.fillColor(FAINT).fontSize(8).text(MARKETS[market].label.toUpperCase(), { characterSpacing: 2 });
 
@@ -127,7 +128,7 @@ export async function buildGuidePdf(
     .fillColor(FAINT)
     .fontSize(8)
     .text(
-      `Prepared for ${MARKETS[market].label}  ·  lavionluxe.com  ·  Generated ${new Date()
+      `Prepared for ${MARKETS[market].label}  ·  ${BRAND_DOMAIN}  ·  Generated ${new Date()
         .toISOString()
         .slice(0, 10)}`,
       { width: W },

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MARKETS, type Market } from "@lavion/schema";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { BRAND_NAME } from "@/lib/brand";
 
 const ORDER: Market[] = ["uk", "ae", "pk"];
 
@@ -22,7 +23,7 @@ export default function Home() {
           </h1>
           <div className="rule-brass mt-10 w-48" />
           <p className="mt-8 max-w-[56ch] text-lg leading-relaxed text-ink-soft">
-            Lavion Luxe lists luxury property across the United Kingdom, the
+            {BRAND_NAME} lists luxury property across the United Kingdom, the
             United Arab Emirates and Pakistan &mdash; and tells you who may buy,
             on what tenure, and what it means for residency before you enquire.
           </p>

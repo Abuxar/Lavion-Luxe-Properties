@@ -1,4 +1,5 @@
 import type { Market } from "@lavion/schema";
+import { brandEmail } from "./brand";
 
 /**
  * F08 — agents and their territories.
@@ -33,7 +34,7 @@ export const AGENTS: Agent[] = [
     localities: ["Chelsea", "Marylebone", "Wapping"],
     cities: ["London"],
     phone: "+442071234567",
-    email: "london@lavionluxe.com",
+    email: brandEmail("london"),
     languages: ["English"],
   },
   {
@@ -44,7 +45,7 @@ export const AGENTS: Agent[] = [
     localities: [],
     cities: [],
     phone: "+442071234568",
-    email: "uk@lavionluxe.com",
+    email: brandEmail("uk"),
     languages: ["English"],
   },
   {
@@ -55,7 +56,7 @@ export const AGENTS: Agent[] = [
     localities: ["Dubai Marina", "Dubai Creek Harbour", "Dubai Maritime City"],
     cities: ["Dubai"],
     phone: "+971501234567",
-    email: "marina@lavionluxe.com",
+    email: brandEmail("marina"),
     languages: ["English", "Arabic"],
   },
   {
@@ -66,7 +67,7 @@ export const AGENTS: Agent[] = [
     localities: [],
     cities: [],
     phone: "+971501234568",
-    email: "uae@lavionluxe.com",
+    email: brandEmail("uae"),
     languages: ["English", "Arabic"],
   },
   {
@@ -77,7 +78,7 @@ export const AGENTS: Agent[] = [
     localities: ["DHA Phase 6", "Bahria Town Phase 8"],
     cities: ["Lahore", "Rawalpindi"],
     phone: "+923001234567",
-    email: "lahore@lavionluxe.com",
+    email: brandEmail("lahore"),
     languages: ["English", "Urdu", "Punjabi"],
   },
   {
@@ -88,7 +89,7 @@ export const AGENTS: Agent[] = [
     localities: [],
     cities: [],
     phone: "+923001234568",
-    email: "pakistan@lavionluxe.com",
+    email: brandEmail("pakistan"),
     languages: ["English", "Urdu"],
   },
 ];

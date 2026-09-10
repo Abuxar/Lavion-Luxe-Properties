@@ -4,6 +4,7 @@ import { emailProvider, savedSearchAlert, type AlertProperty } from "./email";
 import { formatPrice } from "./format";
 import { getListings } from "./listings";
 import { acknowledgeMatches, savedSearchesWithMatches } from "./saved-searches";
+import { SITE_URL } from "./brand";
 
 /**
  * F01 dispatch.
@@ -22,7 +23,7 @@ import { acknowledgeMatches, savedSearchesWithMatches } from "./saved-searches";
  *    than claiming success. The admin page shows that state plainly.
  */
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lavionluxe.com";
+const SITE = SITE_URL;
 
 export interface DispatchRow {
   id: string;

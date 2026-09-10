@@ -292,6 +292,28 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Renaming the platform
+
+Every customer-visible mention of the platform name resolves through
+`src/lib/brand.ts`. Renaming is two environment variables and a redeploy — not
+a find-and-replace across components, PDFs and email templates, which is the
+kind of sweep that leaves one stale mention in a transactional email nobody
+reads until a customer does.
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_BRAND_NAME` | Short form — wordmark, page titles |
+| `NEXT_PUBLIC_BRAND_FULL_NAME` | Formal form. Defaults to `<name> Properties`; set it explicitly if the new name already reads as a company |
+| `NEXT_PUBLIC_BRAND_DOMAIN` | Bare domain, used to build addresses and display URLs |
+
+Verified by building under a different name: header, titles, footer, guide PDFs
+and alert emails all followed, with zero occurrences of the old name on any
+page.
+
+Note this is the **platform** name. The house agency is a separate entity and
+belongs with the other agencies — after the rename they are no longer the same
+thing.
+
 ## Accounts and RBAC
 
 Replaces the single shared passphrase, which was always marked a placeholder:

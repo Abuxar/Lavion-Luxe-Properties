@@ -3,6 +3,7 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import type { Market, SubscriptionTier } from "@lavion/schema";
 import { createBlobCollection } from "./blob-collection";
+import { brandEmail } from "./brand";
 
 /**
  * Users and agencies.
@@ -87,7 +88,7 @@ export async function ensureSeedAdmin(): Promise<User | null> {
   const pass = process.env.ADMIN_PASSPHRASE;
   if (!pass || pass.length < 8) return null;
 
-  const email = norm(process.env.ADMIN_EMAIL ?? "admin@lavionluxe.com");
+  const email = norm(process.env.ADMIN_EMAIL ?? brandEmail("admin"));
   const existing = (await users.all()).find((u) => norm(u.email) === email);
   if (existing) return existing;
 

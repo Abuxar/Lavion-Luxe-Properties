@@ -3,6 +3,7 @@ import { Bodoni_Moda, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ShortlistProvider } from "@/components/shortlist";
 import { ThemeScript } from "@/components/theme-script";
+import { BRAND_FULL_NAME, BRAND_NAME } from "@/lib/brand";
 
 const bodoni = Bodoni_Moda({
   variable: "--font-bodoni",
@@ -27,12 +28,12 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "Lavion Luxe Properties",
-    template: "%s · Lavion Luxe",
+    default: BRAND_FULL_NAME,
+    template: `%s · ${BRAND_NAME}`,
   },
   description:
     "Luxury property for sale and rent across the United Kingdom, the United Arab Emirates and Pakistan.",
-  openGraph: { type: "website", siteName: "Lavion Luxe Properties" },
+  openGraph: { type: "website", siteName: BRAND_FULL_NAME },
   robots: { index: true, follow: true },
 };
 

@@ -8,6 +8,7 @@ import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getListings } from "@/lib/listings";
 import { getAreaTaxonomy } from "@/lib/areas";
+import { BRAND_NAME } from "@/lib/brand";
 
 const VALID: Market[] = ["uk", "ae", "pk"];
 
@@ -148,7 +149,7 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
             <div data-reveal-group className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
               <div>
                 <p data-reveal className="label">
-                  Why Lavion Luxe
+                  Why {BRAND_NAME}
                 </p>
                 <h2 data-reveal className="mt-3 font-display text-4xl leading-tight">
                   The rules, before the enquiry.

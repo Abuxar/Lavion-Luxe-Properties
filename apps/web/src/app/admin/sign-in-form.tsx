@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { signInAction, type ActionState } from "./actions";
+import { BRAND_NAME } from "@/lib/brand";
 
 const initial: ActionState = { status: "idle" };
 
@@ -28,7 +29,7 @@ export function SignInForm({ configured }: { configured: boolean }) {
 
   return (
     <form action={action} className="mx-auto mt-24 max-w-md border border-line bg-surface p-8">
-      <p className="label">Lavion Luxe</p>
+      <p className="label">{BRAND_NAME}</p>
       <h1 className="mt-3 font-display text-3xl">Sign in</h1>
       <div className="rule-brass mt-5 w-20" />
 

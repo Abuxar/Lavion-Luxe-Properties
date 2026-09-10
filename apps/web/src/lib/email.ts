@@ -1,4 +1,5 @@
 import "server-only";
+import { BRAND_DOMAIN, BRAND_MARK, BRAND_NAME, brandEmail } from "./brand";
 
 /**
  * Email delivery.
@@ -30,7 +31,7 @@ export interface EmailProvider {
   send(msg: EmailMessage): Promise<SendResult>;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "Lavion Luxe <noreply@lavionluxe.com>";
+const FROM = process.env.EMAIL_FROM ?? `${BRAND_NAME} <${brandEmail("noreply")}>`;
 const REPLY_TO = process.env.EMAIL_REPLY_TO;
 
 /** Resend. Swapping provider means another object with this shape. */
@@ -111,7 +112,7 @@ function shell(title: string, body: string, footerNote: string): string {
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${LINE};">
 <tr><td style="padding:28px 28px 0;">
-  <div style="font:600 11px/1.4 Helvetica,Arial,sans-serif;letter-spacing:2px;color:${SOFT};text-transform:uppercase;">Lavion Luxe Properties</div>
+  <div style="font:600 11px/1.4 Helvetica,Arial,sans-serif;letter-spacing:2px;color:${SOFT};text-transform:uppercase;">${BRAND_MARK}</div>
   <div style="height:1px;background:${BRASS};width:64px;margin:16px 0 0;"></div>
 </td></tr>
 <tr><td style="padding:24px 28px 0;">
@@ -178,7 +179,7 @@ ${rows}`;
     html: shell(
       subject,
       body,
-      `You are receiving this because you followed a search on lavionluxe.com. <a href="${input.manageUrl}" style="color:${BRASS};">Manage or stop these alerts</a>.`,
+      `You are receiving this because you followed a search on ${BRAND_DOMAIN}. <a href="${input.manageUrl}" style="color:${BRASS};">Manage or stop these alerts</a>.`,
     ),
     text,
   };

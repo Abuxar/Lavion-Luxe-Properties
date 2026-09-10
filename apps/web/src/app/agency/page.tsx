@@ -8,6 +8,7 @@ import { requireAgency } from "@/lib/session";
 import { isConfigured } from "@/lib/session";
 import { SignInForm } from "../admin/sign-in-form";
 import { signOutAction } from "../admin/actions";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const metadata = {
   title: "Agency dashboard",
@@ -170,7 +171,7 @@ async function Gate() {
       <p className="mt-12 border-t border-line pt-6 text-xs leading-relaxed text-ink-faint">
         You see only your own agency&rsquo;s listings and the enquiries they
         generated. Valuation requests and enquiries not tied to one of your
-        properties stay with the Lavion Luxe team.
+        properties stay with the {BRAND_NAME} team.
       </p>
     </main>
   );

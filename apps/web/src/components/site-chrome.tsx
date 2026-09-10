@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MARKETS, type Market } from "@lavion/schema";
 import { ShortlistLink } from "./shortlist";
 import { ThemeToggle } from "./theme-toggle";
+import { BRAND_FULL_NAME, BRAND_NAME } from "@/lib/brand";
 
 // Resolved at build, not render: reading the clock during prerender would
 // make every page that includes the footer dynamic.
@@ -14,7 +15,7 @@ export function SiteHeader({ market }: { market?: Market }) {
     <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-6 py-4">
         <Link href={market ? `/${market}` : "/"} className="shrink-0">
-          <span className="font-display text-xl tracking-tight">Lavion Luxe</span>
+          <span className="font-display text-xl tracking-tight">{BRAND_NAME}</span>
           <span className="sr-only">Properties — home</span>
         </Link>
 
@@ -63,7 +64,7 @@ export function SiteFooter({ market }: { market?: Market }) {
       <div className="mx-auto max-w-[1400px] px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="font-display text-2xl">Lavion Luxe</p>
+            <p className="font-display text-2xl">{BRAND_NAME}</p>
             <div className="rule-brass mt-4 w-24" />
             <p className="mt-4 max-w-[34ch] text-sm text-ink-soft">
               Luxury property across three markets, with the ownership and
@@ -122,7 +123,7 @@ export function SiteFooter({ market }: { market?: Market }) {
         </div>
 
         <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="label">&copy; {YEAR} Lavion Luxe Properties</p>
+          <p className="label">&copy; {YEAR} {BRAND_FULL_NAME}</p>
           <p className="label">United Kingdom · United Arab Emirates · Pakistan</p>
         </div>
       </div>
