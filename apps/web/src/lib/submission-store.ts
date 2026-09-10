@@ -1,5 +1,6 @@
 import "server-only";
 import { head, put } from "@vercel/blob";
+import { isEncrypted, open, seal } from "./queue-crypto";
 import type { Submission } from "./submissions-types";
 
 /**
@@ -76,26 +77,25 @@ export async function loadAll(seed: Submission[]): Promise<Submission[]> {
 
   if (memo && Date.now() - memo.at < MEMO_MS) return memo.data;
 
-  try {
-    const meta = await head(KEY).catch(() => null);
-    if (!meta) {
-      // First run — lay down the seed so the queue is never empty.
-      await saveAll(seed);
-      memo = { at: Date.now(), data: seed };
-      return seed;
-    }
-
-    // cache: "no-store" matters: the blob URL is CDN-backed and a stale read
-    // here would resurrect deleted rows or hide a just-created listing.
-    const res = await fetch(meta.url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`blob read ${res.status}`);
-
-    const data = reviveDates((await res.json()) as Submission[]);
-    memo = { at: Date.now(), data };
-    return data;
-  } catch {
+  const meta = await head(KEY).catch(() => null);
+  if (!meta) {
+    // First run — lay down the seed so the queue is never empty.
+    await saveAll(seed);
+    memo = { at: Date.now(), data: seed };
     return seed;
   }
+
+  // The document EXISTS from here on, so a failure to read it must not fall
+  // back to the seed. Returning demo rows for a real queue is not a degraded
+  // read, it is data loss waiting for the next write to commit it.
+  // cache: "no-store" matters: the blob URL is CDN-backed and a stale read
+  // here would resurrect deleted rows or hide a just-created listing.
+  const res = await fetch(meta.url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`blob read ${res.status}`);
+
+  const data = reviveDates(open<Submission[]>(await res.text()));
+  memo = { at: Date.now(), data };
+  return data;
 }
 
 export async function saveAll(subs: Submission[]): Promise<void> {
@@ -106,9 +106,11 @@ export async function saveAll(subs: Submission[]): Promise<void> {
   memo = { at: Date.now(), data: subs };
   if (!configured()) return;
   try {
-    await put(KEY, JSON.stringify(subs), {
+    await put(KEY, seal(subs), {
       access: "public",
-      contentType: "application/json",
+      // Encrypted at rest — see queue-crypto.ts. The store is a public store,
+      // so the object is fetchable by anyone; the contents are not readable.
+      contentType: isEncrypted() ? "application/octet-stream" : "application/json",
       addRandomSuffix: false,
       allowOverwrite: true,
       // Never let the CDN serve a stale queue back to us.
@@ -126,3 +128,5 @@ export function invalidateMemo(): void {
 export function isDurable(): boolean {
   return configured();
 }
+
+export { isEncrypted } from "./queue-crypto";

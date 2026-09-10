@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { Agency } from "@/lib/accounts";
-import { createAgencyAction, createUserAction, type TeamState } from "./actions";
+import type { Agency, User } from "@/lib/accounts";
+import {
+  createAgencyAction,
+  createUserAction,
+  setPasswordAction,
+  type TeamState,
+} from "./actions";
 
 const initial: TeamState = { status: "idle" };
 
@@ -154,11 +159,15 @@ function Field({
   label,
   type = "text",
   required,
+  minLength,
+  autoComplete,
 }: {
   name: string;
   label: string;
   type?: string;
   required?: boolean;
+  minLength?: number;
+  autoComplete?: string;
 }) {
   return (
     <div>
@@ -166,7 +175,15 @@ function Field({
         {label}
         {required && <span aria-hidden> *</span>}
       </label>
-      <input id={name} name={name} type={type} required={required} className={cls} />
+      <input
+        id={name}
+        name={name}
+        type={type}
+        required={required}
+        minLength={minLength}
+        autoComplete={autoComplete}
+        className={cls}
+      />
     </div>
   );
 }
@@ -193,5 +210,70 @@ function Select({
         ))}
       </select>
     </div>
+  );
+}
+
+/**
+ * Rotate a password.
+ *
+ * Staff can reset any account including their own, because with a single super
+ * admin there is nobody else to do it. The seed admin's hash was readable from
+ * a public Blob URL until the queue documents were encrypted, so that account
+ * in particular should be rotated once rather than left as-is.
+ */
+export function SetPasswordForm({ users }: { users: User[] }) {
+  const [state, action, pending] = useActionState(setPasswordAction, initial);
+
+  return (
+    <form action={action} className="border border-line bg-surface p-6">
+      <p className="label">Change a password</p>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-3">
+        <div>
+          <label htmlFor="userId" className="label block">
+            Account
+          </label>
+          <select id="userId" name="userId" className={cls} required>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} — {u.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <Field
+          name="password"
+          label="New password"
+          type="password"
+          required
+          minLength={12}
+          autoComplete="new-password"
+        />
+        <Field
+          name="confirm"
+          label="Confirm"
+          type="password"
+          required
+          minLength={12}
+          autoComplete="new-password"
+        />
+      </div>
+
+      <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+        At least 12 characters. Live sessions are not signed out — the cookie
+        carries a user id, not the password. To end them, rotate SESSION_SECRET.
+      </p>
+
+      <Result state={state} />
+
+      <button
+        type="submit"
+        disabled={pending || users.length === 0}
+        className="mt-5 bg-ink px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-brass disabled:opacity-50"
+      >
+        {pending ? "Changing…" : "Change password"}
+      </button>
+    </form>
   );
 }

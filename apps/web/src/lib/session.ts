@@ -11,6 +11,7 @@ import {
   verifyPassword,
   type Role,
 } from "./accounts";
+import { clearFailures, recordFailure, retryAfter } from "./throttle";
 
 /**
  * Signed session cookie.
@@ -32,9 +33,32 @@ export interface Session {
   agencyId?: string;
 }
 
+/**
+ * The key that signs session cookies.
+ *
+ * This used to be ADMIN_PASSPHRASE — the same value an administrator types
+ * into the login form. One secret doing both jobs means anyone who recovers
+ * the password also holds the cookie-forging key, so a cracked password stops
+ * being "reset it" and becomes "they can mint a session for any user id,
+ * including one that never logged in".
+ *
+ * SESSION_SECRET is preferred and should always be set in production. The
+ * fallback keeps an existing deployment signing in rather than locking
+ * everyone out the moment this ships; `usingWeakSessionKey()` reports when it
+ * is in force so the state is visible instead of silent. Switching to a real
+ * SESSION_SECRET invalidates live sessions, which only means signing in again.
+ */
 function secret(): string | null {
+  const s = process.env.SESSION_SECRET;
+  if (s && s.length >= 32) return s;
   const p = process.env.ADMIN_PASSPHRASE;
   return p && p.length >= 8 ? p : null;
+}
+
+/** True when the cookie key is still the admin password. */
+export function usingWeakSessionKey(): boolean {
+  const s = process.env.SESSION_SECRET;
+  return !(s && s.length >= 32) && Boolean(process.env.ADMIN_PASSPHRASE);
 }
 
 function sign(value: string, key: string): string {
@@ -100,6 +124,17 @@ export async function signInWithPassword(
   const key = secret();
   if (!key) return { ok: false, error: "Sign-in is not configured." };
 
+  // The password hash for this account was readable from a public Blob URL
+  // before the queue documents were encrypted, so treat every existing hash as
+  // potentially known and make online guessing expensive.
+  const wait = retryAfter(email);
+  if (wait > 0) {
+    return {
+      ok: false,
+      error: `Too many attempts. Try again in ${Math.ceil(wait / 60)} minute(s).`,
+    };
+  }
+
   const user = await findUserByEmail(email);
 
   // Same message and roughly the same work either way: distinguishing
@@ -108,9 +143,15 @@ export async function signInWithPassword(
   const fail = { ok: false as const, error: "Those details are not correct." };
   if (!user || !user.active) {
     await verifyPassword(password, "scrypt$00$00");
+    recordFailure(email);
     return fail;
   }
-  if (!(await verifyPassword(password, user.passwordHash))) return fail;
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    recordFailure(email);
+    return fail;
+  }
+
+  clearFailures(email);
 
   const jar = await cookies();
   jar.set(COOKIE, seal(user.id, key), {

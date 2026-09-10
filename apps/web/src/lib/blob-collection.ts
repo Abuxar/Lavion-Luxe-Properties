@@ -1,5 +1,6 @@
 import "server-only";
 import { head, put } from "@vercel/blob";
+import { isEncrypted, open, seal } from "./queue-crypto";
 
 /**
  * A JSON collection persisted as a single Blob document.
@@ -39,31 +40,36 @@ export function createBlobCollection<T>(opts: {
     if (!configured()) return memo?.data ?? seed;
     if (memo && Date.now() - memo.at < memoMs) return memo.data;
 
-    try {
-      const meta = await head(key).catch(() => null);
-      if (!meta) {
-        await replace(seed);
-        return seed;
-      }
-      // no-store: the blob URL is CDN-backed, and a stale read would resurrect
-      // deleted rows or hide something just written.
-      const res = await fetch(meta.url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`blob read ${res.status}`);
-      const data = revive((await res.json()) as T[]);
-      memo = { at: Date.now(), data };
-      return data;
-    } catch {
-      return memo?.data ?? seed;
+    const meta = await head(key).catch(() => null);
+    if (!meta) {
+      await replace(seed);
+      return seed;
     }
+
+    // The document EXISTS from here on, so a read failure must propagate
+    // rather than fall back to the seed. Handing back demo rows for a live
+    // collection is not a degraded read — the next write would commit them
+    // over the real ones. That matters most for users.json, where the seed
+    // would silently replace the account list.
+    // no-store: the blob URL is CDN-backed, and a stale read would resurrect
+    // deleted rows or hide something just written.
+    const res = await fetch(meta.url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`blob read ${res.status}`);
+    const data = revive(open<T[]>(await res.text()));
+    memo = { at: Date.now(), data };
+    return data;
   }
 
   async function replace(rows: T[]): Promise<void> {
     memo = { at: Date.now(), data: rows };
     if (!configured()) return;
     try {
-      await put(key, JSON.stringify(rows), {
+      await put(key, seal(rows), {
         access: "public",
-        contentType: "application/json",
+        // Encrypted at rest — see queue-crypto.ts. These documents carry
+        // password hashes and customer contact details, and the store itself
+        // is public.
+        contentType: isEncrypted() ? "application/octet-stream" : "application/json",
         addRandomSuffix: false,
         allowOverwrite: true,
         cacheControlMaxAge: 0,

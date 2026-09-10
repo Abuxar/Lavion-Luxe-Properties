@@ -68,6 +68,7 @@ export interface User {
   passwordHash: string;
   createdAt: string;
   lastLoginAt?: string;
+  passwordChangedAt?: string;
   active: boolean;
 }
 
@@ -182,6 +183,33 @@ export async function createUser(input: {
 
 export async function setUserActive(id: string, active: boolean) {
   return users.update((u) => u.id === id, (u) => ({ ...u, active }));
+}
+
+/**
+ * Rotate a password.
+ *
+ * There was no way to do this, which made a leaked hash unrecoverable without
+ * editing the store by hand — and the seed admin's hash was readable from a
+ * public Blob URL until the queue documents were encrypted. Note that
+ * ADMIN_PASSPHRASE cannot serve as the rotation path: it is only consulted
+ * when seeding an account that does not exist yet, so changing it does nothing
+ * to an account already in the store.
+ */
+export async function setUserPassword(
+  id: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (password.length < 12)
+    return { ok: false, error: "Use at least 12 characters." };
+
+  const hash = await hashPassword(password);
+  const updated = await users.update((u) => u.id === id, (u) => ({
+    ...u,
+    passwordHash: hash,
+    passwordChangedAt: new Date().toISOString(),
+  }));
+
+  return updated ? { ok: true } : { ok: false, error: "No such user." };
 }
 
 export async function recordLogin(id: string) {

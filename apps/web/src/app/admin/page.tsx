@@ -4,7 +4,8 @@ import { MARKETS, type Market } from "@lavion/schema";
 import { GateChip } from "@/components/gate-report";
 import { isAdmin, isConfigured } from "@/lib/admin-auth";
 import { formatPrice } from "@/lib/format";
-import { isDurable } from "@/lib/submission-store";
+import { usingWeakSessionKey } from "@/lib/session";
+import { isDurable, isEncrypted } from "@/lib/submission-store";
 import { listSubmissions, queueCounts } from "@/lib/submissions";
 import { SignInForm } from "./sign-in-form";
 import { signOutAction } from "./actions";
@@ -27,6 +28,11 @@ async function Gate() {
 async function Queue() {
   const [subs, counts] = await Promise.all([listSubmissions(), queueCounts()]);
   const durable = isDurable();
+  const warnings = [
+    durable ? null : "No Blob token — submissions are held in memory only and will be lost. Set BLOB_READ_WRITE_TOKEN.",
+    isEncrypted() ? null : "Queue documents are stored unencrypted in a public Blob store. Set QUEUE_SECRET.",
+    usingWeakSessionKey() ? "Session cookies are signed with ADMIN_PASSPHRASE. Set SESSION_SECRET to a separate 32+ character value." : null,
+  ].filter((w): w is string => w !== null);
   const pending = subs.filter((s) => s.status === "pending_review");
   const decided = subs.filter((s) => s.status !== "pending_review");
 
@@ -167,10 +173,29 @@ async function Queue() {
         </section>
       )}
 
+      {warnings.length > 0 && (
+        <section
+          className="mt-12 border p-5"
+          style={{
+            borderColor: "color-mix(in srgb, var(--color-signal) 45%, transparent)",
+            background: "var(--color-signal-wash)",
+          }}
+        >
+          <p className="label" style={{ color: "var(--color-signal)" }}>
+            Configuration &mdash; {warnings.length} unprotected
+          </p>
+          <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-xs leading-relaxed text-ink-soft">
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <p className="mt-12 border-t border-line pt-6 text-xs leading-relaxed text-ink-faint">
         {durable
           ? "Submissions are stored durably and survive deploys and instance recycles."
-          : "WARNING — no Blob token is configured, so submissions are held in memory only and will be lost. Set BLOB_READ_WRITE_TOKEN."}{" "}
+          : "Submissions are not being stored durably."}{" "}
         A listing is filed under the market of the page it was submitted from,
         so a property entered on the wrong market page carries that
         market&rsquo;s currency. {MARKETS.ae.label} listings additionally

@@ -5,7 +5,7 @@ import { listAgencies, listUsers } from "@/lib/accounts";
 import { isConfigured, requireStaff } from "@/lib/session";
 import { SignInForm } from "../sign-in-form";
 import { toggleAgencyAction, toggleUserAction } from "./actions";
-import { AddAgencyForm, AddUserForm } from "./team-forms";
+import { AddAgencyForm, AddUserForm, SetPasswordForm } from "./team-forms";
 
 export default function TeamPage() {
   return (
@@ -52,6 +52,8 @@ async function Gate() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <AddAgencyForm />
         <AddUserForm agencies={agencies.filter((a) => a.active)} />
+
+        <SetPasswordForm users={users} />
       </div>
 
       <section className="mt-12">

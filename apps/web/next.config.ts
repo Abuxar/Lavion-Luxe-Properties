@@ -1,5 +1,42 @@
 import type { NextConfig } from "next";
 
+/**
+ * Content Security Policy.
+ *
+ * Built from the origins this app actually talks to, not a template. Fonts are
+ * self-hosted by next/font at build time, so no Google Fonts origin is needed;
+ * Resend is called server-side and never appears here.
+ *
+ * HONEST LIMIT — script-src carries 'unsafe-inline'. Next streams hydration
+ * and Flight payloads through inline <script> tags, so removing it requires a
+ * per-request nonce from middleware, which means every page becomes dynamic
+ * and the prerendered shells this site is built around stop being cacheable.
+ * The policy still blocks the thing that actually matters here: script loaded
+ * from an origin we did not list. Treat that as the next hardening step once
+ * there is a reason to pay for it, not as a box already ticked.
+ */
+const BLOB_HOST = "https://*.public.blob.vercel-storage.com";
+const CLOUDINARY = "https://res.cloudinary.com";
+
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  // Clickjacking: this site has publish and approve buttons behind a session.
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `img-src 'self' data: blob: ${CLOUDINARY} ${BLOB_HOST}`,
+  `media-src 'self' data: blob: ${CLOUDINARY} ${BLOB_HOST}`,
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  // Dev needs eval for React Refresh; production must not have it.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+  // Photos upload straight from the browser to Blob storage.
+  `connect-src 'self' ${BLOB_HOST}`,
+  "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // Cache Components (PPR + `use cache`). A listing page is a mostly-static
   // shell — photos, description, location — wrapped around a few volatile
@@ -90,6 +127,19 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // frame-ancestors below covers modern browsers; this covers the rest.
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            // Nothing here uses these, so deny them outright rather than
+            // leaving them available to injected script.
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+          },
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];

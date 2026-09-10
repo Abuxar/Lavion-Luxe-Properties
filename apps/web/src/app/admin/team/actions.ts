@@ -7,6 +7,7 @@ import {
   createUser,
   setAgencyActive,
   setUserActive,
+  setUserPassword,
   type Role,
 } from "@/lib/accounts";
 import { requireStaff } from "@/lib/session";
@@ -72,4 +73,31 @@ export async function toggleAgencyAction(formData: FormData): Promise<void> {
   if (!(await requireStaff())) return;
   await setAgencyActive(String(formData.get("id") ?? ""), formData.get("active") === "true");
   revalidatePath("/admin/team");
+}
+
+/**
+ * Rotate a user's password.
+ *
+ * Staff-only, and staff can reset anyone including themselves — with a single
+ * super admin there is no one else to do it, and a leaked credential that
+ * cannot be replaced is not a recoverable situation.
+ */
+export async function setPasswordAction(
+  _prev: TeamState,
+  formData: FormData,
+): Promise<TeamState> {
+  if (!(await requireStaff())) return { status: "error", message: "Not permitted." };
+
+  const id = str(formData, "userId");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (!id) return { status: "error", message: "Pick an account." };
+  if (password !== confirm) return { status: "error", message: "The two passwords do not match." };
+
+  const res = await setUserPassword(id, password);
+  if (!res.ok) return { status: "error", message: res.error };
+
+  revalidatePath("/admin/team");
+  return { status: "ok", message: "Password changed. Existing sessions stay valid until they expire." };
 }
