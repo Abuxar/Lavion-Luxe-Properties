@@ -13,6 +13,7 @@ import { routeToAgent } from "@/lib/agents";
 import { getSimilarListings, slugify } from "@/lib/areas";
 import { formatArea, formatPrice, statusLabel, whatsappLink } from "@/lib/format";
 import { getAllSlugs, getListing, type ListingDetail } from "@/lib/listings";
+import { TRANSACTION_LABEL } from "@lavion/schema";
 
 const VALID: Market[] = ["uk", "ae", "pk"];
 
@@ -116,7 +117,7 @@ export default async function PropertyPage({
           {/* ---------- body: cached, part of the static shell ---------- */}
           <div>
             <p className="label">
-              {listing.category} · {listing.transaction === "sale" ? "For sale" : "To rent"}
+              {listing.category} · {TRANSACTION_LABEL[listing.transaction]}
               {listing.offPlan && " · Off-plan"}
             </p>
             <h1 className="mt-4 font-display text-[clamp(1.9rem,4vw,3rem)] leading-[1.1]">

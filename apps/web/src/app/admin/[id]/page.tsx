@@ -8,6 +8,7 @@ import { formatArea, formatPrice } from "@/lib/format";
 import { getSubmission } from "@/lib/submissions";
 import { SignInForm } from "../sign-in-form";
 import { ApproveButton, RejectForm } from "./review-actions";
+import { TRANSACTION_LABEL } from "@lavion/schema";
 
 export default function ReviewPage({ params }: PageProps<"/admin/[id]">) {
   return (
@@ -39,7 +40,7 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
       <div className="mt-6 flex flex-wrap items-start justify-between gap-4 border-b border-line pb-6">
         <div>
           <p className="label">
-            {m.toUpperCase()} · {l.transaction === "sale" ? "For sale" : "To rent"}
+            {m.toUpperCase()} · {TRANSACTION_LABEL[l.transaction]}
             {l.offPlan && " · Off-plan"}
           </p>
           <h1 className="mt-3 max-w-[30ch] font-display text-3xl leading-tight">{l.title}</h1>

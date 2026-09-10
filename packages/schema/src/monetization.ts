@@ -127,3 +127,22 @@ export function canPublishMore(tier: SubscriptionTier, liveListings: number): bo
   const allowance = TIERS[tier].listingAllowance;
   return allowance === null || liveListings < allowance;
 }
+
+/**
+ * Partner placement.
+ *
+ * A featured agency is pinned above the rest — the house agency, or a partner
+ * who has earned that position. Kept as data rather than hardcoded so swapping
+ * which agency is featured, or adding a second, is a toggle.
+ *
+ * Distinct from listing promotion: this is about the agency, not a property,
+ * and it is disclosed the same way — a partner card says what it is.
+ */
+export const PARTNER_SERVICES = ["buy", "rent", "build"] as const;
+export type PartnerService = (typeof PARTNER_SERVICES)[number];
+
+export const PARTNER_SERVICE_LABEL: Record<PartnerService, string> = {
+  buy: "Buy",
+  rent: "Rent",
+  build: "Build",
+};

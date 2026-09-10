@@ -48,11 +48,12 @@ export function SearchFilters({
         <Select
           label="Type"
           value={query.transaction ?? ""}
-          onChange={(v) => apply({ transaction: (v || undefined) as "sale" | "rent" | undefined })}
+          onChange={(v) => apply({ transaction: (v || undefined) as SearchQuery["transaction"] })}
           options={[
-            { value: "", label: "Sale & rent" },
+            { value: "", label: "Any" },
             { value: "sale", label: "For sale" },
             { value: "rent", label: "To rent" },
+            { value: "build", label: "To build" },
           ]}
         />
 

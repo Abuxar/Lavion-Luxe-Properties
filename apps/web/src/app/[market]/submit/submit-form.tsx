@@ -71,6 +71,7 @@ export function SubmitForm({ market }: { market: Market }) {
         <Select label="Listing type" name="transaction" options={[
           { value: "sale", label: "For sale" },
           { value: "rent", label: "To rent" },
+          { value: "build", label: "To build" },
         ]} />
 
         <Select label="Property type" name="category" options={[

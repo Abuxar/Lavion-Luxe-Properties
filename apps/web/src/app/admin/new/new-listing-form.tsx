@@ -65,7 +65,10 @@ export function NewListingForm() {
            hint="8–160 characters. This is the page heading and the SEO title." />
 
         <S label="Listing type" name="transaction" options={[
-          { value: "sale", label: "For sale" }, { value: "rent", label: "To rent" }]} />
+          { value: "sale", label: "For sale" },
+          { value: "rent", label: "To rent" },
+          { value: "build", label: "To build" },
+        ]} />
 
         <S label="Property type" name="category" options={[
           "apartment","villa","townhouse","penthouse","house","flat","plot","office","retail","warehouse",

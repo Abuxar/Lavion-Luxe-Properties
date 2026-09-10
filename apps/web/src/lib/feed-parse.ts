@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ListingInput,
+  Transaction,
   evaluatePublishGates,
   toSqft,
   type AreaUnit,
@@ -236,7 +237,12 @@ export function mapRowToListing(
     externalRef,
     feedSourceId: opts.feedSourceId,
     agents: [],
-    transaction: (g("transaction") ?? "sale").toLowerCase() === "rent" ? "rent" : "sale",
+    // Feeds spell it however the agency does; anything unrecognised falls
+    // back to sale rather than rejecting an otherwise valid row.
+    transaction: (() => {
+      const t = (g("transaction") ?? "sale").toLowerCase();
+      return Transaction.safeParse(t).success ? (t as Transaction) : "sale";
+    })(),
     category: (g("category") ?? "apartment").toLowerCase(),
     offPlan: bool(g("offPlan")),
     price: {

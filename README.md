@@ -292,6 +292,30 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Featured partner and the build option
+
+**`build` is a third transaction type**, alongside `sale` and `rent` — a plot
+or project offered for construction rather than a finished property. It runs
+through everything the other two do: search filters, listing labels, the
+submission forms, feed mapping and the publish gates. The UK gate already
+required a council tax band only for sales, which is the right behaviour here
+too — a plot has no band and no EPC.
+
+**The featured partner is an agency record with a `featured` flag**, not a
+hardcoded block. Swapping which agency is featured, or adding a second, is a
+toggle. It carries its services (buy / rent / build), each linking straight
+into filtered inventory, so "build" is never a dead label.
+
+It is **disclosed as a partner**, the same principle as the Featured badge on
+promoted listings: a visitor should be able to tell the placement is a
+relationship, not a ranking earned by matching their search. The profile page
+says so explicitly.
+
+The house agency is seeded from `HOUSE_AGENCY_NAME` so it survives the platform
+rename — after which the agency keeps its own name while the site takes the new
+one. They are separate entities, which is exactly why this is a record rather
+than a component.
+
 ## Renaming the platform
 
 Every customer-visible mention of the platform name resolves through

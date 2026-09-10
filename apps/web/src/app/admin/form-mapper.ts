@@ -1,5 +1,6 @@
 import "server-only";
 import { ListingInput, toSqft } from "@lavion/schema";
+import { Transaction } from "@lavion/schema";
 
 /**
  * FormData -> validated ListingInput.
@@ -111,7 +112,9 @@ export function buildListingFromForm(
       | "draft",
     market,
     agents: [],
-    transaction: (get("transaction") ?? "sale") as "sale" | "rent",
+    transaction: (Transaction.safeParse(get("transaction")).success
+      ? get("transaction")
+      : "sale") as Transaction,
     category: get("category") ?? "apartment",
     offPlan: get("offPlan") === "on",
     price: {

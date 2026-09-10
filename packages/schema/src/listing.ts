@@ -23,7 +23,22 @@ export type ListingStatus = z.infer<typeof ListingStatus>;
 /** Sold and let pages keep their URL and their accumulated authority. */
 export const TERMINAL_BUT_INDEXABLE: ListingStatus[] = ["sold", "let"];
 
-export const Transaction = z.enum(["sale", "rent"]);
+/**
+ * How a property is offered.
+ *
+ * `build` covers plots and projects offered for construction rather than a
+ * finished property to move into — a distinct intent from buying or renting,
+ * and one the market-specific disclosure rules treat differently (a plot has
+ * no council tax band or EPC, for instance).
+ */
+export const Transaction = z.enum(["sale", "rent", "build"]);
+export type Transaction = z.infer<typeof Transaction>;
+
+export const TRANSACTION_LABEL: Record<Transaction, string> = {
+  sale: "For sale",
+  rent: "To rent",
+  build: "To build",
+};
 export const Tenure = z.enum(["freehold", "leasehold", "commonhold"]);
 export const PropertyCategory = z.enum([
   "apartment",

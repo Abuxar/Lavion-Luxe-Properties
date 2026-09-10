@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { toSqft, type Market } from "@lavion/schema";
+import type { Transaction } from "@lavion/schema";
 
 /**
  * Data access for the web app.
@@ -17,7 +18,7 @@ export interface ListingSummary {
   title: string;
   market: Market;
   status: string;
-  transaction: "sale" | "rent";
+  transaction: Transaction;
   category: string;
   offPlan: boolean;
   price: { amount: number; currency: string; qualifier?: string };
@@ -194,6 +195,46 @@ const SAMPLE: ListingDetail[] = [
     amenities: ["Sea view", "Terrace", "Backup power", "Covered parking"],
     publishedAt: "2026-08-21",
     compliance: { pk: { societyName: "Clifton Cantonment", transferAuthority: "CBC Karachi" } },
+  },
+  {
+    slug: "dha-phase-9-prism-plot-lahore",
+    title: "One-kanal corner plot ready to build, DHA Phase 9 Prism",
+    market: "pk",
+    status: "published",
+    transaction: "build",
+    category: "plot",
+    offPlan: false,
+    price: { amount: 41_000_000, currency: "PKR" },
+    ...{ area: area(1, "kanal") },
+    tenure: "freehold",
+    location: { locality: "DHA Phase 9 Prism", city: "Lahore" },
+    media: [{ cloudinaryId: "/samples/dha-villa.svg", alt: "DHA Phase 9 plot" }],
+    description:
+      "A level one-kanal corner plot with possession, on a developed street with utilities at the boundary. Suited to a purpose-built villa; we can take the build from drawings through to handover.",
+    amenities: ["Corner plot", "Utilities at boundary", "Possession available"],
+    publishedAt: "2026-09-02",
+    compliance: {
+      pk: { societyName: "DHA Lahore", societyApprovalRef: "DHA-L-9-70115", transferAuthority: "DHA Lahore" },
+    },
+  },
+  {
+    slug: "meydan-district-11-build-plot-dubai",
+    title: "Freehold villa plot with approved envelope, District 11 Meydan",
+    market: "ae",
+    status: "published",
+    transaction: "build",
+    category: "plot",
+    offPlan: false,
+    price: { amount: 8_900_000, currency: "AED" },
+    ...{ area: area(7200, "sqft") },
+    tenure: "freehold",
+    location: { locality: "Meydan District 11", city: "Dubai", freeholdZone: true },
+    media: [{ cloudinaryId: "/samples/creek-horizon.svg", alt: "Meydan plot" }],
+    description:
+      "A freehold plot in a designated area with an approved building envelope, backing onto the community park. Design-and-build handled end to end, or bring your own architect.",
+    amenities: ["Approved envelope", "Park backing", "Designated freehold area"],
+    publishedAt: "2026-09-04",
+    compliance: { ae: { permitNumber: "TRK-2026-771903", permitExpiry: "2027-03-31" } },
   },
 ];
 

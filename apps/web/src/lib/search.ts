@@ -1,4 +1,4 @@
-import { PROMOTION_WEIGHT, isPromotionLive, type Market } from "@lavion/schema";
+import { PROMOTION_WEIGHT, isPromotionLive, type Market, type Transaction } from "@lavion/schema";
 import type { ListingSummary } from "./listings";
 
 /**
@@ -11,7 +11,7 @@ import type { ListingSummary } from "./listings";
  */
 
 export interface SearchQuery {
-  transaction?: "sale" | "rent";
+  transaction?: Transaction;
   city?: string;
   locality?: string;
   category?: string;
@@ -36,6 +36,8 @@ export const SORTS: { value: SortKey; label: string }[] = [
   { value: "size_desc", label: "Largest first" },
 ];
 
+const TRANSACTIONS: Transaction[] = ["sale", "rent", "build"];
+
 export const PER_PAGE = 12;
 
 type Raw = Record<string, string | string[] | undefined>;
@@ -57,7 +59,10 @@ export function parseQuery(sp: Raw): SearchQuery {
   const t = one(sp, "transaction");
   const sort = (SORTS.find((s) => s.value === one(sp, "sort"))?.value ?? "newest") as SortKey;
   return {
-    transaction: t === "sale" || t === "rent" ? t : undefined,
+    // Plain membership test rather than the Zod schema: this module is
+    // imported by the client filter component, and pulling a schema value in
+    // would drag zod into the bundle on the page audited for INP.
+    transaction: TRANSACTIONS.includes(t as Transaction) ? (t as Transaction) : undefined,
     city: one(sp, "city"),
     locality: one(sp, "locality"),
     category: one(sp, "category"),

@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import type { Market, SubscriptionTier } from "@lavion/schema";
+import type { Market, PartnerService, SubscriptionTier } from "@lavion/schema";
 import { createBlobCollection } from "./blob-collection";
 import { brandEmail } from "./brand";
 
@@ -37,6 +37,25 @@ export interface Agency {
   tier: SubscriptionTier;
   createdAt: string;
   active: boolean;
+
+  /**
+   * Pinned above the rest — the house agency, or a partner who has earned it.
+   *
+   * Data rather than a hardcoded block, so swapping which agency is featured
+   * (or adding a second) is a toggle. The platform is being renamed, and after
+   * that the house agency is no longer the same entity as the site: keeping
+   * this as a record is what makes them separable.
+   */
+  featured?: boolean;
+  /** Which markets this partner is featured in. Empty means all of them. */
+  featuredMarkets?: Market[];
+  /** What they do for a client: buy, rent, build. */
+  services?: PartnerService[];
+  tagline?: string;
+  blurb?: string;
+  phone?: string;
+  email?: string;
+  established?: string;
 }
 
 export interface User {
@@ -191,6 +210,14 @@ export async function createAgency(input: {
   name: string;
   market: Market;
   tier: SubscriptionTier;
+  featured?: boolean;
+  featuredMarkets?: Market[];
+  services?: PartnerService[];
+  tagline?: string;
+  blurb?: string;
+  phone?: string;
+  email?: string;
+  established?: string;
 }): Promise<Agency> {
   const rows = await agencies.all();
   const agency: Agency = {
@@ -200,6 +227,14 @@ export async function createAgency(input: {
     tier: input.tier,
     createdAt: new Date().toISOString(),
     active: true,
+    featured: input.featured ?? false,
+    featuredMarkets: input.featuredMarkets,
+    services: input.services,
+    tagline: input.tagline,
+    blurb: input.blurb,
+    phone: input.phone,
+    email: input.email,
+    established: input.established,
   };
   await agencies.replace([...rows, agency]);
   return agency;
@@ -217,4 +252,57 @@ export async function setAgencyActive(id: string, active: boolean) {
 export function publicUser(u: User) {
   const { passwordHash: _omit, ...rest } = u;
   return rest;
+}
+
+/* ---------- featured partner ---------- */
+
+export async function setAgencyFeatured(id: string, featured: boolean) {
+  return agencies.update((a) => a.id === id, (a) => ({ ...a, featured }));
+}
+
+/**
+ * The partner pinned for a market, if any.
+ *
+ * Returns the first active featured agency covering that market. Falls back to
+ * the seeded house partner when nothing has been configured yet, so the card
+ * is never empty on a fresh install — but the seed is a normal record that can
+ * be edited or unfeatured like any other.
+ */
+export async function featuredPartner(market: Market): Promise<Agency | undefined> {
+  await ensureHousePartner();
+  const rows = await agencies.all();
+  return rows.find(
+    (a) =>
+      a.active &&
+      a.featured &&
+      (!a.featuredMarkets?.length || a.featuredMarkets.includes(market)),
+  );
+}
+
+/**
+ * Seeds the house agency once.
+ *
+ * Named from HOUSE_AGENCY_NAME so it survives the platform rename — after
+ * which the agency keeps its own name while the site takes the new one.
+ */
+export async function ensureHousePartner(): Promise<Agency | undefined> {
+  const rows = await agencies.all();
+  const existing = rows.find((a) => a.featured);
+  if (existing) return existing;
+
+  const name = process.env.HOUSE_AGENCY_NAME ?? "Lavion Luxe Properties";
+  if (rows.some((a) => a.name === name)) return rows.find((a) => a.name === name);
+
+  return createAgency({
+    name,
+    market: "ae",
+    tier: "enterprise",
+    featured: true,
+    featuredMarkets: [],
+    services: ["buy", "rent", "build"],
+    tagline: "Buy, rent or build across all three markets",
+    blurb:
+      "Our own team handles acquisitions, lettings and ground-up development across the United Kingdom, the United Arab Emirates and Pakistan — the same disclosure standards as every listing on this site, with the whole transaction under one roof.",
+    established: "2026",
+  });
 }

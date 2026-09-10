@@ -78,7 +78,10 @@ export function AgencyListingForm({ market }: { market: Market }) {
         <F name="title" label="Listing title" required span2 issues={issues}
            hint="8–160 characters. This becomes the page heading." />
         <S name="transaction" label="Listing type" options={[
-          { value: "sale", label: "For sale" }, { value: "rent", label: "To rent" }]} />
+          { value: "sale", label: "For sale" },
+          { value: "rent", label: "To rent" },
+          { value: "build", label: "To build" },
+        ]} />
         <S name="category" label="Property type" options={[
           "apartment","villa","townhouse","penthouse","house","flat","plot","office","retail","warehouse",
         ].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))} />
