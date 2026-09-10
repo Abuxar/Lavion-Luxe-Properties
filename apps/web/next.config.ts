@@ -54,6 +54,22 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Static imagery in public/ was served with max-age=0,
+        // must-revalidate, so a returning visitor revalidated the hero on
+        // every single page view. These files only change on deploy.
+        //
+        // An hour rather than immutable, deliberately: hero images get
+        // replaced under the same filename, and immutable would strand a
+        // returning visitor on the old one indefinitely.
+        source: "/:dir(hero|samples)/:file*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
