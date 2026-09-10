@@ -13,6 +13,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/admin",
           "/admin/",
+          "/agency",
+          "/agency/",
           "/api/",
           // Facet combinations beyond the taxonomy are never indexable.
           "/*?sort=",

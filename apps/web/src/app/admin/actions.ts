@@ -27,10 +27,14 @@ export async function signInAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const pass = String(formData.get("passphrase") ?? "");
-  const ok = await signIn(pass);
-  if (!ok) return { status: "error", message: "That passphrase is not correct." };
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  const ok = await signIn(email, password);
+  if (!ok) return { status: "error", message: "Those details are not correct." };
+
   revalidatePath("/admin");
+  revalidatePath("/agency");
   return { status: "ok", message: "Signed in." };
 }
 

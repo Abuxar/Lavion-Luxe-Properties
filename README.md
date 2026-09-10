@@ -274,6 +274,49 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Accounts and RBAC
+
+Replaces the single shared passphrase, which was always marked a placeholder:
+one secret, no identity, no scoping, and no way to remove one person's access
+without changing everyone's.
+
+**Roles.** `super_admin` is staff and sees everything. `agency_admin` and
+`agent` are scoped to one agency.
+
+**Passwords** use scrypt from Node's own crypto — memory-hard, no dependency,
+salted per user, and no plaintext is ever stored or logged. Sign-in returns the
+same message and does roughly the same work whether the account exists or the
+password is wrong, because distinguishing them tells an attacker which emails
+are registered.
+
+**Sessions** are a signed cookie carrying the user id only. Role and agency are
+re-read from the store on every request rather than trusted from the cookie, so
+disabling someone or changing their role takes effect immediately instead of
+whenever their session happens to expire.
+
+**Scoping lives in one place** (`agency-data.ts`), not in each page. A dashboard
+that filters in the component is one forgotten `.filter()` away from showing an
+agency a competitor's pipeline. Every scoped query takes the agency id
+explicitly and returns nothing when it is missing — failing closed rather than
+falling back to "everything". Verified: no cross-agency leakage on listings or
+leads, and a valuation request tied to no listing stays with staff.
+
+`/agency` is the agency dashboard — their listings, their enquiries, their tier
+allowance. `/admin/team` is where staff create agencies and users.
+
+### Migrating
+
+The first sign-in seeds a `super_admin` from `ADMIN_PASSPHRASE`, so nobody is
+locked out by the change:
+
+| | |
+|---|---|
+| Email | `ADMIN_EMAIL`, default `admin@lavionluxe.com` |
+| Password | the existing `ADMIN_PASSPHRASE` |
+
+The account is created once. Changing the env var afterwards does not silently
+reset the password.
+
 ## Feed ingestion — the aggregator
 
 `/admin/feeds`. Inventory from agencies who do not manage a dashboard, pulled

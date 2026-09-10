@@ -12,13 +12,13 @@ export function SignInForm({ configured }: { configured: boolean }) {
     return (
       <div className="mx-auto mt-24 max-w-md border border-signal/40 bg-signal-wash p-7">
         <p className="label" style={{ color: "var(--color-signal)" }}>
-          Queue sealed
+          Sign-in sealed
         </p>
         <p className="mt-3 text-sm leading-relaxed">
-          <code>ADMIN_PASSPHRASE</code> is not set, so the review queue is closed.
-          Set it (8+ characters) in the environment and redeploy.
+          <code>ADMIN_PASSPHRASE</code> is not set, so sessions cannot be signed
+          and no account can be created. Set it (8+ characters) and redeploy.
         </p>
-        <p className="mt-3 text-xs text-ink-faint">
+        <p className="mt-3 text-xs leading-relaxed text-ink-faint">
           Failing closed is deliberate: a missing variable must never leave a
           queue that can publish listings open to the internet.
         </p>
@@ -29,15 +29,27 @@ export function SignInForm({ configured }: { configured: boolean }) {
   return (
     <form action={action} className="mx-auto mt-24 max-w-md border border-line bg-surface p-8">
       <p className="label">Lavion Luxe</p>
-      <h1 className="mt-3 font-display text-3xl">Review queue</h1>
+      <h1 className="mt-3 font-display text-3xl">Sign in</h1>
       <div className="rule-brass mt-5 w-20" />
 
-      <label htmlFor="passphrase" className="label mt-8 block">
-        Passphrase
+      <label htmlFor="email" className="label mt-8 block">
+        Email
       </label>
       <input
-        id="passphrase"
-        name="passphrase"
+        id="email"
+        name="email"
+        type="email"
+        autoComplete="username"
+        required
+        className="mt-2 w-full border border-line bg-paper px-4 py-3 text-sm outline-none focus-visible:border-brass"
+      />
+
+      <label htmlFor="password" className="label mt-5 block">
+        Password
+      </label>
+      <input
+        id="password"
+        name="password"
         type="password"
         autoComplete="current-password"
         required
@@ -59,9 +71,8 @@ export function SignInForm({ configured }: { configured: boolean }) {
       </button>
 
       <p className="mt-6 text-xs leading-relaxed text-ink-faint">
-        Placeholder access control for phase 1 — a single shared passphrase, not
-        a user system. Replace with the JWT and role model before any agency
-        gets access.
+        Staff and agency accounts sign in here. Passwords are hashed with
+        scrypt; sessions last eight hours.
       </p>
     </form>
   );

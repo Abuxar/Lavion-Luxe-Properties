@@ -47,6 +47,22 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Agency dashboards render scoped, signed-in data — same posture as
+        // the staff queue: never cached, never indexed.
+        source: "/agency/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/agency",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
         source: "/admin",
         headers: [
           { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
