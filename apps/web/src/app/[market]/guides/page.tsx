@@ -68,7 +68,8 @@ export default async function GuidesIndex({ params }: PageProps<"/[market]/guide
                     {g.standfirst}
                   </p>
                   <p className="label mt-4">
-                    For {g.audience} · Reviewed {g.lastReviewedAt.toISOString().slice(0, 10)}
+                    For {g.audience} · Reviewed {g.lastReviewedAt.toISOString().slice(0, 10)} ·
+                    PDF available
                   </p>
                 </Link>
               </li>

@@ -34,11 +34,12 @@ async function Gate() {
         </Link>
       </div>
 
-      <dl className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
+      <dl className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-6">
         <Count k="New" v={counts.new} accent />
         <Count k="Contacted" v={counts.contacted} />
         <Count k="Viewings" v={counts.viewings} />
         <Count k="Valuations" v={counts.valuations} />
+        <Count k="Guides" v={counts.guides} />
         <Count k="Total" v={counts.total} />
       </dl>
 
@@ -96,7 +97,7 @@ function LeadRow({ lead: l }: { lead: Lead }) {
             {l.phone && ` · ${l.phone}`}
           </span>
           <span className="label mt-1 block !normal-case !tracking-normal text-ink-soft">
-            {l.listingTitle ?? l.valuation?.addressLine ?? "—"}
+            {l.listingTitle ?? l.guideTitle ?? l.valuation?.addressLine ?? "—"}
             {l.locality && ` · ${l.locality}`}
             {l.preferredDate && ` · prefers ${l.preferredDate}`}
           </span>
@@ -144,7 +145,14 @@ function LeadRow({ lead: l }: { lead: Lead }) {
 }
 
 function Kind({ kind }: { kind: Lead["kind"] }) {
-  const label = kind === "valuation" ? "Valuation" : kind === "viewing" ? "Viewing" : "Enquiry";
+  const label =
+    kind === "valuation"
+      ? "Valuation"
+      : kind === "viewing"
+        ? "Viewing"
+        : kind === "guide"
+          ? "Guide"
+          : "Enquiry";
   return <span className="label border border-line px-2 py-0.5">{label}</span>;
 }
 

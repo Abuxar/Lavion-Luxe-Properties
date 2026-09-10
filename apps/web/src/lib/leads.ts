@@ -12,7 +12,7 @@ import { getListings } from "./listings";
  * status workflow written twice will drift.
  */
 
-export type LeadKind = "enquiry" | "viewing" | "valuation";
+export type LeadKind = "enquiry" | "viewing" | "valuation" | "guide";
 export type LeadStatus = "new" | "contacted" | "closed";
 export type LeadChannel = "form" | "whatsapp" | "call";
 
@@ -36,6 +36,9 @@ export interface Lead {
   city?: string;
   /** Viewing requests carry a preferred date. */
   preferredDate?: string;
+  /** Guide downloads record which guide was taken. */
+  guideSlug?: string;
+  guideTitle?: string;
 
   /** Valuation requests describe a property we do not yet list. */
   valuation?: {
@@ -118,6 +121,7 @@ export async function leadCounts() {
     contacted: rows.filter((r) => r.status === "contacted").length,
     valuations: rows.filter((r) => r.kind === "valuation").length,
     viewings: rows.filter((r) => r.kind === "viewing").length,
+    guides: rows.filter((r) => r.kind === "guide").length,
   };
 }
 

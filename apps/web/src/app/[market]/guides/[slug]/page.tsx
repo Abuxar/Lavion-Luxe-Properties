@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MARKETS, type Market } from "@lavion/schema";
 import { ListingCard } from "@/components/listing-card";
+import { GuideDownload } from "@/components/guide-download";
 import { LegalDisclaimer } from "@/components/legal-disclaimer";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { allGuideParams, getGuide, type GuideWithRules } from "@/lib/guides";
@@ -161,6 +162,8 @@ export default async function GuidePage({ params }: PageProps<"/[market]/guides/
               <QualifyingListings market={m} guide={guide} />
             </Suspense>
           )}
+
+          <GuideDownload market={m} slug={slug} title={guide.title} />
 
           <LegalDisclaimer market={m} />
 
