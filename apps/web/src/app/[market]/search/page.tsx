@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MARKETS, type Market } from "@lavion/schema";
 import { ListingCard } from "@/components/listing-card";
 import { SaveSearch } from "@/components/save-search";
+import { ActiveFilters } from "@/components/active-filters";
 import { SearchFilters } from "@/components/search-filters";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getListings } from "@/lib/listings";
@@ -99,6 +100,8 @@ async function Results({
   return (
     <>
       <SearchFilters market={market} query={query} facets={facets} total={total} />
+
+      <ActiveFilters market={market} query={query} />
 
       {items.length === 0 ? (
         <div className="mt-8 border border-line bg-surface p-16 text-center">

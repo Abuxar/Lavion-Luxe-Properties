@@ -10,6 +10,8 @@ import { getListings } from "@/lib/listings";
 import { getAreaTaxonomy } from "@/lib/areas";
 import { featuredPartner } from "@/lib/accounts";
 import { PartnerCard } from "@/components/partner-card";
+import { ScrollCue } from "@/components/scroll-cue";
+import { MarketStats } from "@/components/market-stats";
 import { BRAND_NAME } from "@/lib/brand";
 
 const VALID: Market[] = ["uk", "ae", "pk"];
@@ -77,6 +79,7 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
         {/* ---------- hero ---------- */}
         <section className="relative flex min-h-[calc(100svh-4.25rem)] flex-col justify-center overflow-hidden border-b border-line">
           <HeroBackdrop market={m} />
+          <ScrollCue />
 
           <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-24 pt-16 text-[#f1efe9]">
             <div className="max-w-4xl">
@@ -118,13 +121,18 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
           </div>
         </section>
 
+        {/* ---------- what is actually here ---------- */}
+        <Suspense fallback={null}>
+          <MarketStats market={m} />
+        </Suspense>
+
         {/* ---------- featured partner, above the rest ---------- */}
         <Suspense fallback={null}>
           <Partner market={m} />
         </Suspense>
 
         {/* ---------- inventory ---------- */}
-        <section className="mx-auto max-w-[1400px] px-6 py-20">
+        <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
             <div>
               <p className="label">Selected inventory</p>

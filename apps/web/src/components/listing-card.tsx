@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Market } from "@lavion/schema";
+import { TRANSACTION_LABEL } from "@lavion/schema";
 import { formatArea, formatPrice, statusLabel } from "@/lib/format";
 import type { ListingSummary } from "@/lib/listings";
 import { SaveButton } from "./shortlist";
@@ -19,6 +20,10 @@ export function ListingCard({
 }) {
   const href = `/${listing.market}/property/${listing.slug}`;
   const sold = listing.status === "sold" || listing.status === "let";
+  const perSqft =
+    listing.area.canonicalSqft > 0
+      ? Math.round(listing.price.amount / listing.area.canonicalSqft)
+      : 0;
 
   return (
     <article
@@ -85,13 +90,20 @@ export function ListingCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="font-display text-2xl leading-none tnum">
             {listing.price.qualifier === "from" && (
               <span className="font-sans text-xs text-ink-faint mr-1.5">from</span>
             )}
             {formatPrice(listing.price.amount, listing.price.currency, listing.market)}
           </p>
+          {/* Price per sq ft is what actually separates two properties at a
+              similar asking price, and no listing states it. */}
+          {perSqft > 0 && (
+            <p className="label tnum">
+              {formatPrice(perSqft, listing.price.currency, listing.market)}/sq ft
+            </p>
+          )}
         </div>
 
         <h3 className="font-sans text-[15px] font-medium leading-snug text-ink">
@@ -102,7 +114,8 @@ export function ListingCard({
           {listing.location.locality}, {listing.location.city}
         </p>
 
-        <div className="mt-auto flex items-center gap-4 border-t border-line pt-3 label tnum">
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3 label tnum">
+          <span className="!text-brass">{TRANSACTION_LABEL[listing.transaction]}</span>
           {listing.bedrooms !== undefined && <span>{listing.bedrooms} bed</span>}
           {listing.bathrooms !== undefined && <span>{listing.bathrooms} bath</span>}
           <span className="ml-auto text-ink-soft">
