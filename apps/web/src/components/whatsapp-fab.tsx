@@ -1,12 +1,23 @@
+"use client";
+
+import { useEffect, useId, useRef, useState } from "react";
+import type { Market } from "@lavion/schema";
 import { WHATSAPP_DISPLAY, whatsappHref } from "@/lib/contact";
+import { enquiryTopics, type ListingContext } from "@/lib/enquiry-topics";
 
 /**
- * Floating WhatsApp enquiry button.
+ * Floating WhatsApp enquiry button, with a question picker.
  *
  * In the UAE and Pakistan WhatsApp is the default channel for a serious
  * property enquiry, and the only route to it was previously buried in a
  * listing's sidebar — so a visitor browsing search results, a guide or an
  * area page had no way to ask a question without first picking a property.
+ *
+ * The picker exists because one fixed prefilled message puts the work back on
+ * the sender: they delete it and type the real question, and the agent gets a
+ * message with no subject. Choosing the question means the first message
+ * already says what it is about. Every message stays editable in WhatsApp
+ * before sending, so this is a starting point and not a form.
  *
  * Deliberately NOT WhatsApp green. A saturated green disc is the one element
  * that would break a petrol-and-brass palette, and it reads as a bolted-on
@@ -20,16 +31,13 @@ import { WHATSAPP_DISPLAY, whatsappHref } from "@/lib/contact";
  * and 15.0 at rest, 5.2 and 7.8 on hover. Note that --color-ink is LIGHT in
  * the dark theme, so this disc is cream there and petrol in the light theme —
  * which is why both directions had to be checked.
- *
- * Server component: no state, no effects, just a link. It costs nothing on the
- * client, which matters because this renders on the money pages.
  */
 
-function WhatsAppGlyph() {
+function WhatsAppGlyph({ size = 21 }: { size?: number }) {
   return (
     <svg
-      width="21"
-      height="21"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="currentColor"
       aria-hidden
@@ -41,39 +49,118 @@ function WhatsAppGlyph() {
   );
 }
 
-export function WhatsAppFab({ context }: { context?: string }) {
-  const message = context
-    ? `Hello, I have a question about ${context}.`
-    : "Hello, I'd like to ask about a property.";
+export function WhatsAppFab({
+  market,
+  listing,
+}: {
+  market: Market;
+  listing?: ListingContext;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const topics = enquiryTopics(market, listing);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      // Focus goes back to the trigger, or a keyboard user is left nowhere.
+      buttonRef.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
 
   return (
-    <a
-      href={whatsappHref(message)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Message us on WhatsApp at ${WHATSAPP_DISPLAY}`}
-      title={`WhatsApp ${WHATSAPP_DISPLAY}`}
+    <div
+      ref={rootRef}
       /*
-       * Sits above the footer but clear of the viewport edge. The inset uses
-       * env(safe-area-inset-bottom) so it is not under the home indicator on
-       * an iPhone, where a fixed bottom-right control otherwise becomes
-       * genuinely untappable.
+       * Anchored clear of the viewport edge, using env(safe-area-inset-bottom)
+       * so the control is not under the home indicator on an iPhone, where a
+       * fixed bottom-right button otherwise becomes genuinely untappable.
        *
-       * print:hidden because a printed listing with a floating chat button on
+       * print:hidden because a printed listing with a floating chat widget on
        * it looks like a broken page — and estate agents do print listings.
        */
-      className="group fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-50 flex items-center gap-0 overflow-hidden rounded-full border border-brass/50 bg-ink pl-[13px] pr-[13px] text-paper shadow-[0_6px_24px_-8px_rgba(0,0,0,0.55)] transition-[gap,padding,background-color,border-color,color] duration-300 hover:border-brass hover:bg-brass hover:text-paper focus-visible:border-brass motion-reduce:transition-none sm:hover:gap-2.5 sm:hover:pr-5 print:hidden"
-      style={{ height: "46px" }}
+      className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-50 flex flex-col items-end gap-3 print:hidden"
     >
-      <WhatsAppGlyph />
-      {/*
-        The label expands on hover on pointer devices only. On a phone there is
-        no hover, and a permanently wide pill covers listing cards — so touch
-        gets the disc, and the accessible name carries the meaning either way.
-      */}
-      <span className="label hidden max-w-0 whitespace-nowrap !text-current opacity-0 transition-[max-width,opacity] duration-300 group-hover:max-w-[9rem] group-hover:opacity-100 motion-reduce:transition-none sm:inline">
-        WhatsApp
-      </span>
-    </a>
+      {open && (
+        <div
+          id={panelId}
+          role="menu"
+          aria-label="Choose what to ask"
+          /*
+           * Width is capped against the viewport, not just set: at 360px a
+           * fixed 20rem panel plus the 1.25rem inset would run off the screen
+           * and take the document's scroll width with it.
+           */
+          className="w-[min(20rem,calc(100vw-2.5rem))] origin-bottom-right overflow-hidden border border-line bg-surface shadow-[0_18px_50px_-12px_rgba(0,0,0,0.45)] motion-safe:animate-[rise-in_180ms_ease-out]"
+        >
+          <p className="label border-b border-line px-4 py-3">What can we help with?</p>
+
+          <ul className="flex flex-col">
+            {topics.map((t) => (
+              <li key={t.id}>
+                <a
+                  role="menuitem"
+                  href={whatsappHref(t.message)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-ink-soft transition-colors last:border-b-0 hover:bg-paper hover:text-brass focus-visible:bg-paper focus-visible:text-brass"
+                >
+                  <span className="min-w-0 flex-1">{t.label}</span>
+                  <span aria-hidden className="shrink-0 text-brass">
+                    &rarr;
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <p className="border-t border-line px-4 py-3 text-xs leading-relaxed text-ink-faint">
+            Opens WhatsApp with your question ready to send — you can edit it
+            first. {WHATSAPP_DISPLAY}
+          </p>
+        </div>
+      )}
+
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls={open ? panelId : undefined}
+        aria-label={
+          open ? "Close the WhatsApp enquiry menu" : `Ask a question on WhatsApp at ${WHATSAPP_DISPLAY}`
+        }
+        title={`WhatsApp ${WHATSAPP_DISPLAY}`}
+        className="group flex h-[46px] items-center gap-0 self-end overflow-hidden rounded-full border border-brass/50 bg-ink px-[13px] text-paper shadow-[0_6px_24px_-8px_rgba(0,0,0,0.55)] transition-[gap,padding,background-color,border-color,color] duration-300 hover:border-brass hover:bg-brass hover:text-paper focus-visible:border-brass motion-reduce:transition-none sm:hover:gap-2.5 sm:hover:pr-5 print:hidden"
+      >
+        <WhatsAppGlyph />
+        {/*
+          The label expands on hover on pointer devices only. On a phone there
+          is no hover, and a permanently wide pill covers listing cards — so
+          touch gets the disc, and the accessible name carries the meaning.
+        */}
+        <span className="label hidden max-w-0 whitespace-nowrap !text-current opacity-0 transition-[max-width,opacity] duration-300 group-hover:max-w-[9rem] group-hover:opacity-100 motion-reduce:transition-none sm:inline">
+          WhatsApp
+        </span>
+      </button>
+    </div>
   );
 }

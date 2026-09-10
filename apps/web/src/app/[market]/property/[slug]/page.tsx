@@ -11,6 +11,7 @@ import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { routeToAgent } from "@/lib/agents";
 import { getSimilarListings, slugify } from "@/lib/areas";
+import { SITE_URL } from "@/lib/brand";
 import { formatArea, formatPrice, statusLabel, whatsappLink } from "@/lib/format";
 import { getAllSlugs, getListing, type ListingDetail } from "@/lib/listings";
 import { TRANSACTION_LABEL } from "@lavion/schema";
@@ -269,7 +270,16 @@ export default async function PropertyPage({
         </Suspense>
       </main>
 
-      <SiteFooter market={m} />
+      <SiteFooter
+        market={m}
+        listing={{
+          title: listing.title,
+          url: `${SITE_URL}/${m}/property/${listing.slug}`,
+          price: formatPrice(listing.price.amount, listing.price.currency, m),
+          locality: listing.location.locality,
+          city: listing.location.city,
+        }}
+      />
     </>
   );
 }

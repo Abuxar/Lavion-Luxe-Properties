@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MARKETS, type Market } from "@lavion/schema";
 import { ShortlistLink } from "./shortlist";
 import { WhatsAppFab } from "./whatsapp-fab";
+import type { ListingContext } from "@/lib/enquiry-topics";
 import { ThemeToggle } from "./theme-toggle";
 import { BRAND_FULL_NAME, BRAND_NAME } from "@/lib/brand";
 
@@ -129,7 +130,19 @@ export function SiteHeader({ market }: { market?: Market }) {
   );
 }
 
-export function SiteFooter({ market }: { market?: Market }) {
+export function SiteFooter({
+  market,
+  /**
+   * Passed only by the listing page. With it the enquiry picker offers
+   * questions about THIS property ("is this still available?") instead of
+   * generic ones, and appends the URL so the agent can open what is being
+   * asked about.
+   */
+  listing,
+}: {
+  market?: Market;
+  listing?: ListingContext;
+}) {
   const active = market ?? "uk";
   return (
     <>
@@ -138,7 +151,7 @@ export function SiteFooter({ market }: { market?: Market }) {
         wraps /admin and /agency, and a public enquiry button has no business
         on a staff console. Every public page renders this footer.
       */}
-      <WhatsAppFab context={market ? MARKETS[market].label : undefined} />
+      <WhatsAppFab market={active} listing={listing} />
     <footer className="mt-24 border-t border-line bg-surface">
       <div className="mx-auto max-w-[1400px] px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
