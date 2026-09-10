@@ -302,7 +302,23 @@ falling back to "everything". Verified: no cross-agency leakage on listings or
 leads, and a valuation request tied to no listing stays with staff.
 
 `/agency` is the agency dashboard — their listings, their enquiries, their tier
-allowance. `/admin/team` is where staff create agencies and users.
+allowance. `/agency/new` is self-serve submission. `/admin/team` is where staff
+create agencies and users.
+
+### Agency submission
+
+Narrower than the staff form on purpose: no market picker (it comes from the
+agency), no publish control, no compliance override. **Nothing self-publishes
+whatever the role** — an agency submits and staff review, which is the whole
+point of the gated-submission model.
+
+Two controls enforced server-side, not merely hinted at in the UI:
+
+- **The tier allowance.** The dashboard warning is a courtesy; the action
+  refuses. Only *live* listings count, so drafts and pending items do not
+  consume the quota.
+- **The owning agency comes from the session, never the form.** Otherwise an
+  agency could file listings under a competitor's name.
 
 ### Migrating
 
