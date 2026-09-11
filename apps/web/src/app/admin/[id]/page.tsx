@@ -119,6 +119,12 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
             </div>
           ) : (
             <>
+              <Link
+                href={`/admin/${sub.id}/edit`}
+                className="label border border-line px-4 py-3 text-center transition-colors hover:border-brass"
+              >
+                Edit details
+              </Link>
               <ApproveButton id={sub.id} blocked={blocked} />
               <div className="border-t border-line pt-6">
                 <RejectForm id={sub.id} />

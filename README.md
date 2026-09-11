@@ -292,21 +292,46 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Queue encryption
+
+The review queue, users, leads and saved searches are JSON documents in a
+**public** Vercel Blob store, so they are encrypted at rest (AES-256-GCM,
+`src/lib/queue-crypto.ts`). The key is `QUEUE_SECRET` if set, otherwise derived
+from `BLOB_READ_WRITE_TOKEN`, which Vercel already holds — so encryption needs
+no extra configuration. Session cookies are signed the same way: `SESSION_SECRET`
+if set, otherwise a key derived from the Blob token, never the admin password.
+
+Reads try every key, so setting `QUEUE_SECRET` later strands nothing. Do not
+rotate the Blob token while relying on the derived key: set `QUEUE_SECRET`
+first. `scripts/encrypt-queue.mjs --check` confirms a key opens the live
+documents before anything is written.
+
 ## How buying works, per market
 
-The listing page used to run one mortgage calculator everywhere. That describes
-a UK or UAE purchase and misdescribes a Pakistani one. Each market now shows its
-own process, with the numbers shaped by it:
+Each market shows its own purchase process, with the numbers panel shaped by
+it. Checked against primary sources in September 2026 (GOV.UK, HMRC, Dubai Land
+Department, UAE Central Bank, FBR), with DHA practice from agency guidance.
 
-- **Pakistan** — verify the file first, pay the seller a token (bayana), pay the
-  balance in full on a fixed date, transfer at the society or DHA. No loan and
-  no interest, so the panel shows the token, the balance with its actual due
-  date, "Interest: None", and a total paid equal to the price.
-- **UK** — solicitors on both sides; an accepted offer is not binding until
-  contracts are exchanged (usually a 10% deposit), then the balance at
-  completion. Mortgage calculator plus when each payment falls due.
-- **UAE** — MOU (Form F in Dubai) with a 10% security deposit, mortgage approval
-  and developer NOC, then the balance at the land department transfer.
+- **Pakistan** — no loan, no interest. Verify the file and get a no-demand
+  certificate; a small token holds the property; the bayana — commonly around
+  25% in DHA — is paid under an agreement on stamp paper; the balance is paid
+  in full at transfer, with both parties present. The panel shows the bayana,
+  the balance with its actual due date, "Interest: None", and a total equal to
+  the price. Overseas Pakistanis with NICOP or POC pay advance tax at the filer
+  rate (FBR); no percentage is shown, because it changes with each budget.
+- **UK** — solicitor-led, and there is no mortgage model. An accepted offer is
+  not binding; exchange of contracts is, with a deposit that is often 10%;
+  completion follows a few weeks later, and the solicitor pays the purchase tax
+  within 14 days. The panel shows the deposit at exchange, the balance by the
+  completion date, and Stamp Duty at the GOV.UK residential rates with
+  first-time buyer, additional-property (+5%) and non-UK resident (+2%) options.
+  Scotland (LBTT) and Wales (LTT) have their own rates and are noted, not
+  calculated — the listing's region comes from the gazetteer.
+- **UAE** — Form F with a 10% security deposit, a mortgage within the Central
+  Bank's caps (expats: 80% up to AED 5m, 70% above, 60% on a second home or
+  investment), transfer at the land department. The down payment cannot go
+  below those caps, and Dubai listings add the DLD fees: 4% of the price plus
+  the trustee office and title deed fees.
 
 The steps are server-rendered (`buying-steps.tsx`, data in `buying-process.ts`)
 so they are in the HTML and cost no JavaScript; only the numbers stay in the

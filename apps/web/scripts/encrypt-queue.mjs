@@ -11,17 +11,19 @@
  * users.json and leads.json may not be written again for weeks, and until they
  * are they stay readable.
  *
- * RUN THIS ONLY AFTER QUEUE_SECRET IS LIVE IN PRODUCTION. Encrypting first
- * would leave the deployed site unable to read its own queue, and it would be
- * right to refuse rather than report an empty one.
+ * The key is chosen exactly as queue-crypto.ts chooses it: QUEUE_SECRET if set,
+ * otherwise derived from BLOB_READ_WRITE_TOKEN. RUN ONLY AFTER that code is
+ * live in production, and with the same env production has — a different key
+ * would leave the deployed site unable to read its own queue.
  *
- *   node --env-file=../../.env.local scripts/encrypt-queue.mjs        # dry run
+ *   node --env-file=../../.env.local scripts/encrypt-queue.mjs          # dry run
  *   node --env-file=../../.env.local scripts/encrypt-queue.mjs --write
+ *   node --env-file=../../.env.local scripts/encrypt-queue.mjs --check  # decrypt test
  *
  * Safe to re-run: an already-encrypted document is left alone.
  */
 import { head, put } from "@vercel/blob";
-import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, scryptSync } from "node:crypto";
 
 const V1 = "LLQ1";
 const SALT = "lavion.queue.v1"; // must match src/lib/queue-crypto.ts
@@ -35,14 +37,29 @@ const KEYS = [
 ];
 
 const write = process.argv.includes("--write");
+const check = process.argv.includes("--check");
 const secret = process.env.QUEUE_SECRET;
+const token = process.env.BLOB_READ_WRITE_TOKEN;
 
-if (!secret || secret.length < 16) {
-  console.error("QUEUE_SECRET is missing or under 16 characters — nothing to do.");
+// Same order as queue-crypto.ts.
+const key =
+  secret && secret.length >= 16
+    ? scryptSync(secret, SALT, 32)
+    : token
+      ? Buffer.from(hkdfSync("sha256", token, SALT, "queue-encryption", 32))
+      : null;
+if (!key) {
+  console.error("No QUEUE_SECRET and no BLOB_READ_WRITE_TOKEN — nothing to do.");
   process.exit(1);
 }
+console.log(`key source: ${secret && secret.length >= 16 ? "QUEUE_SECRET" : "derived from BLOB_READ_WRITE_TOKEN"}`);
 
-const key = scryptSync(secret, SALT, 32);
+function openEnvelope(raw) {
+  const [, iv, tag, body] = raw.trimStart().split(":");
+  const d = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+  d.setAuthTag(Buffer.from(tag, "base64"));
+  return JSON.parse(Buffer.concat([d.update(Buffer.from(body, "base64")), d.final()]).toString("utf8"));
+}
 
 function seal(json) {
   const iv = randomBytes(12);
@@ -67,7 +84,16 @@ for (const k of KEYS) {
 
   const raw = await (await fetch(meta.url, { cache: "no-store" })).text();
   if (raw.trimStart().startsWith(`${V1}:`)) {
-    console.log(`  ${k.padEnd(28)} already encrypted`);
+    if (check) {
+      try {
+        const rows = openEnvelope(raw);
+        console.log(`  ${k.padEnd(28)} encrypted, opens with this key (${rows.length} rows)`);
+      } catch {
+        console.log(`  ${k.padEnd(28)} encrypted, DOES NOT open with this key`);
+      }
+    } else {
+      console.log(`  ${k.padEnd(28)} already encrypted`);
+    }
     continue;
   }
 

@@ -367,6 +367,34 @@ export async function createAdminListing(input: {
   return { submission: withGates(submission), published: canPublish, gates };
 }
 
+/**
+ * Correct a submission that is still in review.
+ *
+ * Only pending ones: a published listing is live, and editing it in place
+ * would change an advert after it passed the gate. The new data has already
+ * been through the same schema as a fresh submission, and the gate is
+ * re-evaluated on every read — so moving a listing to the right market re-runs
+ * that market's disclosure checks rather than inheriting the old result.
+ */
+export async function updateSubmissionListing(
+  id: string,
+  listing: ListingInput,
+): Promise<{ ok: true; submission: SubmissionWithGates } | { ok: false; error: string }> {
+  const all = await read();
+  const s = all.find((x) => x.id === id);
+  if (!s) return { ok: false, error: "That submission no longer exists." };
+  if (s.status !== "pending_review") {
+    return { ok: false, error: "Only submissions still in review can be edited." };
+  }
+
+  const updated: Submission = {
+    ...s,
+    listing: { ...listing, source: s.listing.source, status: "pending_review" },
+  };
+  await write(all.map((x) => (x.id === id ? updated : x)));
+  return { ok: true, submission: withGates(updated) };
+}
+
 export async function rejectSubmission(id: string, note: string): Promise<SubmissionWithGates> {
   const all = await read();
   const s = all.find((x) => x.id === id);

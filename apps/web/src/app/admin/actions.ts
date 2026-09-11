@@ -7,7 +7,9 @@ import {
   approveSubmission,
   createAdminListing,
   createSubmission,
+  getSubmission,
   rejectSubmission,
+  updateSubmissionListing,
 } from "@/lib/submissions";
 import { buildListingFromForm } from "./form-mapper";
 
@@ -214,5 +216,43 @@ export async function createListingAction(
         ? "Published with a compliance override. The bypass is recorded on the listing."
         : "Published. It is live on the public site now."
       : "Saved to the review queue.",
+  };
+}
+
+/* ---------- edit a submission still in review ---------- */
+
+export async function updateSubmissionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await isAdmin())) return { status: "error", message: "Not signed in." };
+
+  const id = String(formData.get("submissionId") ?? "");
+  const existing = await getSubmission(id);
+  if (!existing) return { status: "error", message: "That submission no longer exists." };
+
+  // Same mapper and schema as a fresh submission, so an edit cannot produce a
+  // shape the create path would have rejected.
+  const built = buildListingFromForm(
+    formData,
+    existing.listing.source === "self_submitted" ? "self_submitted" : "admin_entry",
+  );
+  if (!built.ok) {
+    return { status: "error", message: "Some details need fixing.", fieldIssues: built.fieldIssues };
+  }
+
+  const res = await updateSubmissionListing(id, built.listing);
+  if (!res.ok) return { status: "error", message: res.error };
+
+  updateTag("listings");
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${id}`);
+
+  const blocking = res.submission.gates.failures.filter((f) => f.severity === "blocking").length;
+  return {
+    status: "ok",
+    message: blocking
+      ? `Saved. ${blocking} disclosure ${blocking === 1 ? "item still blocks" : "items still block"} publishing — see the review page.`
+      : "Saved. It now clears the publish gate — approve it from the review page.",
   };
 }

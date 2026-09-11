@@ -6,90 +6,16 @@ import { MARKETS, type Market } from "@lavion/schema";
 /**
  * The numbers panel, shaped by how property is actually bought in each market.
  *
- * It used to run one mortgage model everywhere. In Pakistan that described a
- * transaction nobody makes: a purchase there is a token paid to the seller and
- * the balance in full on a fixed date, with no loan and no interest, so
- * "monthly repayment" and "total interest over term" were simply wrong. The UK
- * and UAE do buy with mortgages, but the money moves at legal milestones —
- * exchange and completion, the MOU deposit and transfer — and those are what a
- * buyer actually has to plan cash around, so they are shown too.
+ *   Pakistan  No loan, no interest: bayana now, balance in full on a fixed date.
+ *   UK        Solicitor-led: a deposit at exchange makes it binding, the balance
+ *             goes at completion, and the solicitor pays the purchase tax.
+ *             No mortgage model — the process is what a buyer plans around.
+ *   UAE       Mortgage and deposit: 10% on signing Form F, the balance at
+ *             transfer, borrowing held inside the Central Bank's caps.
  *
- * Runs entirely client-side on numbers the buyer controls — no request, no
- * stored assumption that can silently go stale. Gross yield only, and it says
- * so: net yield needs service charge, fees and void periods, which vary per
- * property and are not ours to guess.
+ * Sources are listed in lib/buying-process.ts. Runs client-side on numbers the
+ * buyer controls; every panel says it is an illustration, not advice.
  */
-
-interface MortgageTerms {
-  mode: "mortgage";
-  heading: string;
-  depositPct: number;
-  ratePct: number;
-  years: number;
-  /** Typical gross annual rent as a fraction of value, for the yield seed. */
-  grossYieldPct: number;
-  /** The first payment, at the milestone that makes the deal binding. */
-  first: { label: string; pct: number; note: string };
-  /** Everything else, at the milestone that transfers ownership. */
-  second: { label: string; note: string };
-  note: string;
-}
-
-interface TokenTerms {
-  mode: "token";
-  heading: string;
-  tokenPct: number;
-  balanceDays: number;
-  grossYieldPct: number;
-  note: string;
-}
-
-const TERMS: Record<Market, MortgageTerms | TokenTerms> = {
-  uk: {
-    mode: "mortgage",
-    heading: "Deposit, mortgage and yield",
-    depositPct: 25,
-    ratePct: 5.2,
-    years: 25,
-    grossYieldPct: 4.5,
-    first: {
-      label: "At exchange of contracts",
-      pct: 10,
-      note: "Paid through your solicitor. The deal is now binding.",
-    },
-    second: {
-      label: "At completion",
-      note: "The rest of your deposit plus the mortgage, sent by your solicitor.",
-    },
-    note: "Non-resident buyers are typically asked for a larger deposit than residents.",
-  },
-  ae: {
-    mode: "mortgage",
-    heading: "Deposit, mortgage and yield",
-    depositPct: 25,
-    ratePct: 4.5,
-    years: 25,
-    grossYieldPct: 6.5,
-    first: {
-      label: "On signing the MOU",
-      pct: 10,
-      note: "Security deposit, usually a cheque held until transfer.",
-    },
-    second: {
-      label: "At transfer",
-      note: "The balance, from your own funds or a UAE mortgage.",
-    },
-    note: "Non-resident mortgages in the UAE commonly require 25–35% down.",
-  },
-  pk: {
-    mode: "token",
-    heading: "Token, balance and yield",
-    tokenPct: 10,
-    balanceDays: 45,
-    grossYieldPct: 5,
-    note: "No loan and no interest — the agreed price is the price paid. Transfer fees and advance taxes are extra, and advance tax depends on filer status.",
-  },
-};
 
 type Fmt = Intl.NumberFormat;
 
@@ -97,212 +23,292 @@ export function YieldCalculator({
   price,
   currency,
   market,
+  region,
 }: {
   price: number;
   currency: string;
   market: Market;
+  /** Resolved from the listing's location — England vs Scotland, Dubai vs Abu Dhabi. */
+  region?: string;
 }) {
-  const t = TERMS[market];
   const locale = MARKETS[market].locale;
-
   const fmt = useMemo(
-    () =>
-      new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency,
-        maximumFractionDigits: 0,
-      }),
+    () => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }),
     [locale, currency],
   );
+
+  const heading =
+    market === "pk"
+      ? "Bayana, balance and yield"
+      : market === "uk"
+        ? "Exchange, completion and Stamp Duty"
+        : "Deposit, mortgage and transfer";
 
   return (
     // No top margin here: it would collapse through the deferral wrapper and
     // only appear once this mounts. The wrapper carries it instead.
     <section className="border border-line bg-surface p-7">
       <p className="label !text-brass">Run the numbers</p>
-      <h2 className="mt-3 font-display text-2xl">{t.heading}</h2>
+      <h2 className="mt-3 font-display text-2xl">{heading}</h2>
 
-      {t.mode === "token" ? (
-        <TokenPlan terms={t} price={price} fmt={fmt} locale={locale} />
-      ) : (
-        <MortgagePlan terms={t} price={price} fmt={fmt} />
-      )}
+      {market === "pk" && <BayanaPlan price={price} fmt={fmt} locale={locale} />}
+      {market === "uk" && <ConveyancingPlan price={price} fmt={fmt} locale={locale} region={region} />}
+      {market === "ae" && <UaeMortgagePlan price={price} fmt={fmt} region={region} />}
     </section>
   );
 }
 
-/* ---------- Pakistan: token now, balance on a fixed date, no interest ---------- */
-
-function TokenPlan({
-  terms,
-  price,
-  fmt,
-  locale,
-}: {
-  terms: TokenTerms;
-  price: number;
-  fmt: Fmt;
-  locale: string;
-}) {
-  const [tokenPct, setTokenPct] = useState(terms.tokenPct);
-  const [days, setDays] = useState(terms.balanceDays);
-  const [monthlyRent, setMonthlyRent] = useState(
-    Math.round((price * (terms.grossYieldPct / 100)) / 12),
-  );
-
-  const token = Math.round(price * (tokenPct / 100));
-  const balance = Math.max(0, price - token);
-  const grossYield = price > 0 ? ((monthlyRent * 12) / price) * 100 : 0;
-
-  // Reading today's date is safe here: this component is loaded with
-  // ssr:false, so there is no server render for it to disagree with.
-  const dueLabel = useMemo(() => {
-    const due = new Date();
-    due.setDate(due.getDate() + days);
-    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(due);
+/** Today plus n days, in the market's own date style. Client-only (ssr:false). */
+function useDueLabel(days: number, locale: string) {
+  return useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(d);
   }, [days, locale]);
+}
+
+function useRent(price: number, grossYieldPct: number) {
+  return useState(Math.round((price * (grossYieldPct / 100)) / 12));
+}
+
+const yieldPct = (monthlyRent: number, price: number) =>
+  price > 0 ? ((monthlyRent * 12) / price) * 100 : 0;
+
+/* ---------- Pakistan ---------- */
+
+function BayanaPlan({ price, fmt, locale }: { price: number; fmt: Fmt; locale: string }) {
+  // DHA practice: bayana commonly around 25% on stamp paper, balance at transfer.
+  const [pct, setPct] = useState(25);
+  const [days, setDays] = useState(45);
+  const [rent, setRent] = useRent(price, 5);
+
+  const bayana = Math.round(price * (pct / 100));
+  const due = useDueLabel(days, locale);
 
   return (
     <>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-        <div className="flex flex-col gap-5">
-          <Slider
-            label="Token to the seller"
-            value={tokenPct}
-            min={5}
-            max={50}
-            step={1}
-            suffix="%"
-            hint={fmt.format(token)}
-            onChange={setTokenPct}
-          />
-          <Slider
-            label="Balance due in"
-            value={days}
-            min={7}
-            max={180}
-            step={1}
-            suffix=" days"
-            onChange={setDays}
-          />
-          <RentInput value={monthlyRent} onChange={setMonthlyRent} />
-        </div>
-
-        <div className="flex flex-col gap-px bg-line">
-          <Figure k="Token now" v={fmt.format(token)} accent />
-          <Figure k={`Balance by ${dueLabel}`} v={fmt.format(balance)} />
-          <Figure k="Interest" v="None" />
-          <Figure k="Total paid" v={fmt.format(price)} />
-          <Figure k="Gross rental yield" v={`${grossYield.toFixed(2)}%`} accent />
-        </div>
-      </div>
-
+      <Grid
+        left={
+          <>
+            <Slider label="Bayana to the seller" value={pct} min={5} max={50} step={1} suffix="%"
+              hint={fmt.format(bayana)} onChange={setPct} />
+            <Slider label="Balance due in" value={days} min={7} max={180} step={1} suffix=" days" onChange={setDays} />
+            <RentInput value={rent} onChange={setRent} />
+          </>
+        }
+        right={
+          <>
+            <Figure k="Bayana now" v={fmt.format(bayana)} accent />
+            <Figure k={`Balance at transfer · by ${due}`} v={fmt.format(Math.max(0, price - bayana))} />
+            <Figure k="Interest" v="None" />
+            <Figure k="Total paid" v={fmt.format(price)} />
+            <Figure k="Gross rental yield" v={`${yieldPct(rent, price).toFixed(2)}%`} accent />
+          </>
+        }
+      />
       <Footnote>
-        {terms.note} Gross yield only — it excludes maintenance, fees and void
-        periods. An illustration for comparison, not a quote or financial advice.
+        No loan and no interest — the agreed price is the price paid. Before the
+        bayana a small token, often PKR 25,000–100,000, usually holds the property.
+        The transfer fee, stamp duty and advance tax (236K) are extra and depend
+        on the city and your filer status. Gross yield only. An illustration, not
+        a quote or financial advice.
       </Footnote>
     </>
   );
 }
 
-/* ---------- UK and UAE: deposit at a binding milestone, balance at transfer ---------- */
+/* ---------- UK ---------- */
 
-function MortgagePlan({
-  terms,
+/**
+ * Stamp Duty Land Tax, England and Northern Ireland, residential — GOV.UK
+ * rates as published September 2026. Surcharges apply to the whole price:
+ * 5% on an additional property, 2% for a non-UK resident. First-time buyer
+ * relief only up to £500,000, and never alongside the additional-property rate.
+ */
+function stampDuty(price: number, o: { firstTime: boolean; additional: boolean; nonResident: boolean }) {
+  const firstTimeRelief = o.firstTime && !o.additional && price <= 500_000;
+  const bands: [number, number][] = firstTimeRelief
+    ? [[300_000, 0], [500_000, 0.05]]
+    : [[125_000, 0], [250_000, 0.02], [925_000, 0.05], [1_500_000, 0.1], [Infinity, 0.12]];
+
+  let tax = 0;
+  let lower = 0;
+  for (const [upper, rate] of bands) {
+    if (price > lower) tax += (Math.min(price, upper) - lower) * rate;
+    lower = upper;
+  }
+  tax += price * ((o.additional ? 0.05 : 0) + (o.nonResident ? 0.02 : 0));
+  return { tax: Math.round(tax), firstTimeRelief };
+}
+
+function ConveyancingPlan({
   price,
   fmt,
+  locale,
+  region,
 }: {
-  terms: MortgageTerms;
   price: number;
   fmt: Fmt;
+  locale: string;
+  region?: string;
 }) {
-  const [depositPct, setDepositPct] = useState(terms.depositPct);
-  const [ratePct, setRatePct] = useState(terms.ratePct);
-  const [years, setYears] = useState(terms.years);
-  const [monthlyRent, setMonthlyRent] = useState(
-    Math.round((price * (terms.grossYieldPct / 100)) / 12),
-  );
+  const [depositPct, setDepositPct] = useState(10);
+  const [days, setDays] = useState(14);
+  const [firstTime, setFirstTime] = useState(false);
+  const [additional, setAdditional] = useState(false);
+  const [nonResident, setNonResident] = useState(false);
+  const [rent, setRent] = useRent(price, 4.5);
 
-  const { deposit, loan, monthly, totalInterest, grossYield, netMonthly } = useMemo(() => {
-    const deposit = Math.round(price * (depositPct / 100));
-    const loan = Math.max(0, price - deposit);
-    const r = ratePct / 100 / 12;
-    const n = years * 12;
+  const deposit = Math.round(price * (depositPct / 100));
+  const due = useDueLabel(days, locale);
 
-    // Standard amortisation; the r === 0 branch avoids a divide-by-zero when
-    // someone drags the rate to zero.
-    const monthly = r === 0 ? (n ? loan / n : 0) : (loan * r) / (1 - Math.pow(1 + r, -n));
-
-    return {
-      deposit,
-      loan,
-      monthly: Math.round(monthly),
-      totalInterest: Math.round(monthly * n - loan),
-      grossYield: price > 0 ? ((monthlyRent * 12) / price) * 100 : 0,
-      netMonthly: Math.round(monthlyRent - monthly),
-    };
-  }, [price, depositPct, ratePct, years, monthlyRent]);
-
-  // The first payment comes out of your own money, so it can never be more
-  // than the deposit you have — a 5% deposit cannot fund a 10% exchange.
-  const firstPct = Math.min(terms.first.pct, depositPct);
-  const first = Math.round(price * (firstPct / 100));
+  // Scotland and Wales have their own purchase taxes with their own bands.
+  // Not calculated here rather than calculated wrongly.
+  const devolved = region === "Scotland" ? "LBTT" : region === "Wales" ? "LTT" : null;
+  const sd = stampDuty(price, { firstTime, additional, nonResident });
 
   return (
     <>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-        <div className="flex flex-col gap-5">
-          <Slider
-            label="Deposit"
-            value={depositPct}
-            min={5}
-            max={100}
-            step={1}
-            suffix="%"
-            hint={fmt.format(deposit)}
-            onChange={setDepositPct}
-          />
-          <Slider
-            label="Interest rate"
-            value={ratePct}
-            min={0}
-            max={25}
-            step={0.1}
-            suffix="%"
-            onChange={setRatePct}
-          />
-          <Slider label="Term" value={years} min={5} max={35} step={1} suffix=" yrs" onChange={setYears} />
-          <RentInput value={monthlyRent} onChange={setMonthlyRent} />
-        </div>
+      <Grid
+        left={
+          <>
+            <Slider label="Deposit at exchange" value={depositPct} min={5} max={20} step={1} suffix="%"
+              hint={fmt.format(deposit)} onChange={setDepositPct} />
+            <Slider label="Completion after exchange" value={days} min={0} max={56} step={1}
+              suffix={days === 0 ? " (same day)" : " days"} onChange={setDays} />
+            {!devolved && (
+              <fieldset className="flex flex-col gap-2.5">
+                <legend className="label">Stamp Duty applies as</legend>
+                <Check label="First-time buyer" on={firstTime && !additional} disabled={additional}
+                  onChange={setFirstTime} />
+                <Check label="Buying an additional property (+5%)" on={additional} onChange={setAdditional} />
+                <Check label="Not UK resident (+2%)" on={nonResident} onChange={setNonResident} />
+              </fieldset>
+            )}
+            <RentInput value={rent} onChange={setRent} />
+          </>
+        }
+        right={
+          <>
+            <Figure k="At exchange — binding" v={fmt.format(deposit)} accent />
+            <Figure k={`Balance at completion · by ${due}`} v={fmt.format(Math.max(0, price - deposit))} />
+            {devolved ? (
+              <Figure k={`${devolved} (${region})`} v="Own rates" />
+            ) : (
+              <Figure
+                k={`Stamp Duty · ${price > 0 ? ((sd.tax / price) * 100).toFixed(1) : "0"}%${sd.firstTimeRelief ? " · first-time relief" : ""}`}
+                v={fmt.format(sd.tax)}
+              />
+            )}
+            <Figure k="Total to complete" v={fmt.format(price + (devolved ? 0 : sd.tax))} />
+            <Figure k="Gross rental yield" v={`${yieldPct(rent, price).toFixed(2)}%`} accent />
+          </>
+        }
+      />
+      <Footnote>
+        {devolved
+          ? `${region} has its own purchase tax (${devolved}) with different bands; your solicitor calculates it. `
+          : "Stamp Duty at the GOV.UK residential rates for England and Northern Ireland, paid by your solicitor within 14 days of completion. First-time buyer relief applies only up to £500,000. "}
+        The total excludes your solicitor&rsquo;s fees and searches. Gross yield only.
+        An illustration, not a quote or tax advice.
+      </Footnote>
+    </>
+  );
+}
 
-        <div className="flex flex-col gap-px bg-line">
-          <Figure k="Monthly repayment" v={fmt.format(monthly)} accent />
-          <Figure k="Loan amount" v={fmt.format(loan)} />
-          <Figure k="Total interest over term" v={fmt.format(totalInterest)} />
-          <Figure k="Gross rental yield" v={`${grossYield.toFixed(2)}%`} accent />
-          <Figure
-            k="Rent minus repayment"
-            v={`${netMonthly >= 0 ? "+" : ""}${fmt.format(netMonthly)}`}
-            tone={netMonthly >= 0 ? "good" : "bad"}
-          />
-        </div>
-      </div>
+/* ---------- UAE ---------- */
+
+/**
+ * Central Bank lending caps for expatriate buyers (loan as a share of value):
+ * 80% on a first home up to AED 5m, 70% above that, 60% on a second home or
+ * investment property. The deposit slider cannot go below what they imply.
+ */
+function minDownPct(price: number, second: boolean) {
+  if (second) return 40;
+  return price <= 5_000_000 ? 20 : 30;
+}
+
+/** Dubai Land Department sale registration schedule (dubailand.gov.ae). */
+function dldFees(price: number) {
+  const transfer = Math.round(price * 0.04);
+  const trustee = price >= 500_000 ? 4_000 * 1.05 : 2_000 * 1.05;
+  const titleDeed = 250 + 20; // title deed + knowledge and innovation fees
+  return { transfer, other: Math.round(trustee + titleDeed) };
+}
+
+function UaeMortgagePlan({ price, fmt, region }: { price: number; fmt: Fmt; region?: string }) {
+  const [second, setSecond] = useState(false);
+  const floor = minDownPct(price, second);
+  const [downPct, setDownPct] = useState(floor);
+  const [ratePct, setRatePct] = useState(4.5);
+  const [years, setYears] = useState(25);
+  const [rent, setRent] = useRent(price, 6.5);
+
+  // Moving into a stricter cap lifts the deposit rather than leaving it below
+  // what a lender is allowed to accept.
+  const down = Math.max(downPct, floor);
+
+  const { loan, monthly, totalInterest } = useMemo(() => {
+    const loan = Math.max(0, price - Math.round(price * (down / 100)));
+    const r = ratePct / 100 / 12;
+    const n = years * 12;
+    const monthly = r === 0 ? (n ? loan / n : 0) : (loan * r) / (1 - Math.pow(1 + r, -n));
+    return { loan, monthly: Math.round(monthly), totalInterest: Math.round(monthly * n - loan) };
+  }, [price, down, ratePct, years]);
+
+  const securityPct = Math.min(10, down);
+  const security = Math.round(price * (securityPct / 100));
+  const dubai = region === "Dubai";
+  const fees = dldFees(price);
+
+  return (
+    <>
+      <Grid
+        left={
+          <>
+            <Check label="Second home or investment property" on={second} onChange={setSecond} />
+            <Slider label="Down payment" value={down} min={floor} max={100} step={1} suffix="%"
+              hint={fmt.format(Math.round(price * (down / 100)))} onChange={setDownPct} />
+            <Slider label="Interest rate" value={ratePct} min={0} max={15} step={0.1} suffix="%" onChange={setRatePct} />
+            <Slider label="Term" value={years} min={5} max={25} step={1} suffix=" yrs" onChange={setYears} />
+            <RentInput value={rent} onChange={setRent} />
+          </>
+        }
+        right={
+          <>
+            <Figure k="Monthly repayment" v={fmt.format(monthly)} accent />
+            <Figure k={`Loan · ${100 - down}% of value`} v={fmt.format(loan)} />
+            <Figure k="Total interest over term" v={fmt.format(totalInterest)} />
+            <Figure k="Gross rental yield" v={`${yieldPct(rent, price).toFixed(2)}%`} accent />
+            <Figure
+              k="Rent minus repayment"
+              v={`${rent - monthly >= 0 ? "+" : ""}${fmt.format(rent - monthly)}`}
+              tone={rent - monthly >= 0 ? "good" : "bad"}
+            />
+          </>
+        }
+      />
 
       <p className="label mt-8">When the money moves</p>
-      <div className="mt-3 grid gap-px border border-line bg-line sm:grid-cols-2">
-        <Stage label={terms.first.label} pct={firstPct} value={fmt.format(first)} note={terms.first.note} />
-        <Stage
-          label={terms.second.label}
-          pct={100 - firstPct}
-          value={fmt.format(price - first)}
-          note={terms.second.note}
-        />
+      <div className={`mt-3 grid gap-px border border-line bg-line ${dubai ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        <Stage label={`On signing Form F · ${securityPct}%`} value={fmt.format(security)}
+          note="Security deposit, usually a cheque held by the agent until transfer." />
+        <Stage label={`At transfer · ${100 - securityPct}%`} value={fmt.format(price - security)}
+          note="The balance, from your funds and the mortgage." />
+        {dubai && (
+          <Stage label="Dubai Land Department" value={fmt.format(fees.transfer + fees.other)}
+            note="4% transfer fee plus the trustee office and title deed fees." />
+        )}
       </div>
 
       <Footnote>
-        {terms.note} Gross yield only — it excludes service charge, agency fees,
-        maintenance and void periods, which vary per property. An illustration
-        for comparison, not a mortgage quote or financial advice.
+        Down payment floored at the UAE Central Bank&rsquo;s caps for expatriates: at
+        least 20% on a first home up to AED 5m, 30% above that, 40% on a second home
+        or investment. Non-residents are set by each bank, often higher.
+        {dubai
+          ? " The 4% is 2% buyer and 2% seller on the Land Department's schedule; buyers often pay all of it."
+          : " Transfer fees are set by each emirate's land department and are not calculated here."}{" "}
+        Gross yield only. An illustration, not a mortgage quote or financial advice.
       </Footnote>
     </>
   );
@@ -310,12 +316,19 @@ function MortgagePlan({
 
 /* ---------- primitives ---------- */
 
-function Stage({ label, pct, value, note }: { label: string; pct: number; value: string; note: string }) {
+function Grid({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
+  return (
+    <div className="mt-6 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+      <div className="flex flex-col gap-5">{left}</div>
+      <div className="flex flex-col gap-px bg-line">{right}</div>
+    </div>
+  );
+}
+
+function Stage({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <div className="bg-paper p-4">
-      <p className="label">
-        {label} · <span className="tnum">{pct}%</span>
-      </p>
+      <p className="label">{label}</p>
       <p className="mt-2 font-display text-xl tabular-nums break-words text-ink">{value}</p>
       <p className="mt-1 text-xs leading-relaxed text-ink-soft">{note}</p>
     </div>
@@ -325,6 +338,31 @@ function Stage({ label, pct, value, note }: { label: string; pct: number; value:
 function Footnote({ children }: { children: React.ReactNode }) {
   return (
     <p className="mt-6 border-t border-line pt-5 text-xs leading-relaxed text-ink-faint">{children}</p>
+  );
+}
+
+function Check({
+  label,
+  on,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={`flex items-center gap-3 text-sm ${disabled ? "opacity-50" : ""}`}>
+      <input
+        type="checkbox"
+        checked={on}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-[var(--color-brass)]"
+      />
+      {label}
+    </label>
   );
 }
 

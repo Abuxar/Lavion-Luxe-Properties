@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
 import {
   AGENCY_ROLES,
   STAFF_ROLES,
@@ -42,15 +42,28 @@ export interface Session {
  * being "reset it" and becomes "they can mint a session for any user id,
  * including one that never logged in".
  *
- * SESSION_SECRET is preferred and should always be set in production. The
- * fallback keeps an existing deployment signing in rather than locking
- * everyone out the moment this ships; `usingWeakSessionKey()` reports when it
- * is in force so the state is visible instead of silent. Switching to a real
- * SESSION_SECRET invalidates live sessions, which only means signing in again.
+ * Order: SESSION_SECRET if set; otherwise a key derived from
+ * BLOB_READ_WRITE_TOKEN, which Vercel already holds, so the cookie key is a
+ * real secret that is not the admin password without anyone adding an env
+ * var. ADMIN_PASSPHRASE is the last resort only where no Blob token exists
+ * (a bare local run), and `usingWeakSessionKey()` reports it. Any change of
+ * key invalidates live sessions, which only means signing in again.
  */
+let derived: { from: string; key: string } | null = null;
+
 function secret(): string | null {
   const s = process.env.SESSION_SECRET;
   if (s && s.length >= 32) return s;
+
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (token) {
+    if (!derived || derived.from !== token) {
+      const key = Buffer.from(hkdfSync("sha256", token, "lavion.session.v1", "session-signing", 32));
+      derived = { from: token, key: key.toString("hex") };
+    }
+    return derived.key;
+  }
+
   const p = process.env.ADMIN_PASSPHRASE;
   return p && p.length >= 8 ? p : null;
 }
@@ -58,7 +71,11 @@ function secret(): string | null {
 /** True when the cookie key is still the admin password. */
 export function usingWeakSessionKey(): boolean {
   const s = process.env.SESSION_SECRET;
-  return !(s && s.length >= 32) && Boolean(process.env.ADMIN_PASSPHRASE);
+  return (
+    !(s && s.length >= 32) &&
+    !process.env.BLOB_READ_WRITE_TOKEN &&
+    Boolean(process.env.ADMIN_PASSPHRASE)
+  );
 }
 
 function sign(value: string, key: string): string {

@@ -8,6 +8,7 @@ import { PropertyGallery } from "@/components/property-gallery";
 import { SaveButton } from "@/components/shortlist";
 import { LazyYieldCalculator } from "@/components/lazy-yield-calculator";
 import { BuyingSteps } from "@/components/buying-steps";
+import { resolvePlace } from "@/lib/gazetteer";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { routeToAgent } from "@/lib/agents";
@@ -181,6 +182,9 @@ export default async function PropertyPage({
                   price={listing.price.amount}
                   currency={listing.price.currency}
                   market={m}
+                  // England vs Scotland decides which purchase tax applies;
+                  // Dubai vs another emirate decides the transfer fees.
+                  region={resolvePlace(m, listing.location.city, listing.location.locality).region}
                 />
               </>
             )}

@@ -1,12 +1,32 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { createContext, useActionState, useContext, useState } from "react";
 import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
-import { createListingAction, type ActionState } from "../actions";
+import { createListingAction, updateSubmissionAction, type ActionState } from "../actions";
 
 const initial: ActionState = { status: "idle" };
 
 type Market = "uk" | "ae" | "pk";
+
+/**
+ * Prefill for editing a submission that is still in review.
+ *
+ * Values reach the fields through context rather than a prop on every input,
+ * so the create form and the edit form stay one form — the whole point of
+ * reusing it is that they cannot drift apart.
+ */
+export interface ListingFormEdit {
+  submissionId: string;
+  market: Market;
+  tenure: string;
+  offPlan: boolean;
+  /** Existing photos, one URL per line, shown in the paste-URLs box. */
+  mediaUrls: string;
+  /** Keyed by input name, exactly as the form posts them. */
+  values: Record<string, string>;
+}
+
+const Defaults = createContext<Record<string, string>>({});
 
 const UNITS: Record<Market, { value: string; label: string }[]> = {
   uk: [{ value: "sqft", label: "sq ft" }, { value: "sqm", label: "m²" }],
@@ -20,18 +40,23 @@ const UNITS: Record<Market, { value: string; label: string }[]> = {
 
 const CURRENCY: Record<Market, string> = { uk: "GBP £", ae: "AED", pk: "PKR Rs" };
 
-export function NewListingForm() {
-  const [state, action, pending] = useActionState(createListingAction, initial);
-  const [market, setMarket] = useState<Market>("ae");
-  const [tenure, setTenure] = useState("freehold");
-  const [offPlan, setOffPlan] = useState(false);
+export function NewListingForm({ edit }: { edit?: ListingFormEdit } = {}) {
+  const [state, action, pending] = useActionState(
+    edit ? updateSubmissionAction : createListingAction,
+    initial,
+  );
+  const [market, setMarket] = useState<Market>(edit?.market ?? "ae");
+  const [tenure, setTenure] = useState(edit?.tenure ?? "freehold");
+  const [offPlan, setOffPlan] = useState(edit?.offPlan ?? false);
   const [images, setImages] = useState<UploadedImage[]>([]);
-  const [urls, setUrls] = useState("");
+  const [urls, setUrls] = useState(edit?.mediaUrls ?? "");
 
   const issues = state.status === "error" ? (state.fieldIssues ?? {}) : {};
 
   return (
+    <Defaults.Provider value={edit?.values ?? {}}>
     <form action={action} className="flex flex-col gap-10">
+      {edit && <input type="hidden" name="submissionId" value={edit.submissionId} />}
       {/* ---- market ---- */}
       <fieldset>
         <legend className="label">Market</legend>
@@ -132,7 +157,7 @@ export function NewListingForm() {
         note="Upload from this device — on a phone the picker offers the camera, your photo library and files. Images are resized before upload so a phone photo does not cost the viewer their LCP.">
         <ImageUploader value={images} onChange={setImages} name="media" />
 
-        <details className="sm:col-span-2">
+        <details className="sm:col-span-2" open={Boolean(edit?.mediaUrls)}>
           <summary className="label cursor-pointer">Or paste image URLs</summary>
           <div className="mt-3">
             <textarea
@@ -207,13 +232,52 @@ export function NewListingForm() {
         </Group>
       )}
 
-      <PublishControls pending={pending} state={state} />
+      <PublishControls pending={pending} state={state} editing={Boolean(edit)} />
     </form>
+    </Defaults.Provider>
   );
 }
 
-function PublishControls({ pending, state }: { pending: boolean; state: ActionState }) {
+function PublishControls({
+  pending,
+  state,
+  editing,
+}: {
+  pending: boolean;
+  state: ActionState;
+  editing?: boolean;
+}) {
   const [override, setOverride] = useState(false);
+
+  // Editing keeps the submission in review. Publishing stays on the review
+  // page, where the gate and any override are decided in one place.
+  if (editing) {
+    return (
+      <div className="border-t border-line pt-8">
+        <p className="max-w-[62ch] text-sm text-ink-soft">
+          Saving keeps this in the review queue. Approve it from the review page
+          once it clears the publish gate.
+        </p>
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-6 bg-ink px-8 py-4 text-sm font-medium text-paper transition-colors hover:bg-brass disabled:opacity-50"
+        >
+          {pending ? "Saving…" : "Save changes"}
+        </button>
+        {state.status === "ok" && (
+          <p className="mt-5 text-sm" style={{ color: "var(--color-brass)" }}>
+            {state.message}
+          </p>
+        )}
+        {state.status === "error" && (
+          <p className="mt-5 text-sm" style={{ color: "var(--color-signal)" }}>
+            {state.message}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-line pt-8">
@@ -317,12 +381,13 @@ function F({ label, name, type = "text", required, hint, span2, issues }: {
   hint?: string; span2?: boolean; issues: Record<string, string>;
 }) {
   const err = issues[name];
+  const dv = useContext(Defaults)[name];
   return (
     <div className={span2 ? "sm:col-span-2" : undefined}>
       <label htmlFor={name} className="label block">
         {label}{required && <span aria-hidden> *</span>}
       </label>
-      <input id={name} name={name} type={type} required={required} className={inputCls} />
+      <input id={name} name={name} type={type} required={required} defaultValue={dv} className={inputCls} />
       {hint && !err && <p className="mt-1.5 text-xs text-ink-faint">{hint}</p>}
       {err && <p className="mt-1.5 text-xs" style={{ color: "var(--color-signal)" }}>{err}</p>}
     </div>
@@ -335,6 +400,7 @@ function T({ label, name, rows = 4, required, hint, issues, value, onChange }: {
   value?: string; onChange?: (v: string) => void;
 }) {
   const err = issues[name];
+  const dv = useContext(Defaults)[name];
   return (
     <div className="sm:col-span-2">
       <label htmlFor={name} className="label block">
@@ -342,7 +408,7 @@ function T({ label, name, rows = 4, required, hint, issues, value, onChange }: {
       </label>
       <textarea
         id={name} name={name} rows={rows} required={required} className={inputCls}
-        {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : {})}
+        {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : { defaultValue: dv })}
       />
       {hint && !err && <p className="mt-1.5 text-xs text-ink-faint">{hint}</p>}
       {err && <p className="mt-1.5 text-xs" style={{ color: "var(--color-signal)" }}>{err}</p>}
@@ -354,12 +420,13 @@ function S({ label, name, options, value, onChange }: {
   label: string; name: string; options: { value: string; label: string }[];
   value?: string; onChange?: (v: string) => void;
 }) {
+  const dv = useContext(Defaults)[name];
   return (
     <div>
       <label htmlFor={name} className="label block">{label}</label>
       <select
         id={name} name={name} className={inputCls}
-        {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : {})}
+        {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : { defaultValue: dv })}
       >
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -370,11 +437,12 @@ function S({ label, name, options, value, onChange }: {
 function C({ label, name, checked, onChange }: {
   label: string; name: string; checked?: boolean; onChange?: (v: boolean) => void;
 }) {
+  const dv = useContext(Defaults)[name];
   return (
     <label className="flex items-start gap-3 sm:col-span-2">
       <input
         type="checkbox" name={name} className="mt-1 h-4 w-4 accent-[var(--color-brass)]"
-        {...(onChange ? { checked, onChange: (e) => onChange(e.target.checked) } : {})}
+        {...(onChange ? { checked, onChange: (e) => onChange(e.target.checked) } : { defaultChecked: dv === "on" })}
       />
       <span className="text-sm">{label}</span>
     </label>
