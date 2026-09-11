@@ -201,8 +201,9 @@ export async function setUserPassword(
   id: string,
   password: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (password.length < 12)
-    return { ok: false, error: "Use at least 12 characters." };
+  // 8 is NIST SP 800-63B's floor for passwords people choose themselves.
+  if (password.length < 8)
+    return { ok: false, error: "Use at least 8 characters." };
 
   const hash = await hashPassword(password);
   const updated = await users.update((u) => u.id === id, (u) => ({

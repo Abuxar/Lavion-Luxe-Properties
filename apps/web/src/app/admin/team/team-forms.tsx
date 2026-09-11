@@ -249,7 +249,7 @@ export function SetPasswordForm({ users }: { users: User[] }) {
           label="New password"
           type="password"
           required
-          minLength={12}
+          minLength={8}
           autoComplete="new-password"
         />
         <Field
@@ -257,13 +257,13 @@ export function SetPasswordForm({ users }: { users: User[] }) {
           label="Confirm"
           type="password"
           required
-          minLength={12}
+          minLength={8}
           autoComplete="new-password"
         />
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-        At least 12 characters. Live sessions are not signed out — the cookie
+        At least 8 characters. Live sessions are not signed out — the cookie
         carries a user id, not the password. To end them, rotate SESSION_SECRET.
       </p>
 
