@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { MARKETS, type Market } from "@lavion/schema";
 import { SORTS, toSearchParams, type SearchQuery } from "@/lib/search";
+import type { LocationTree, RegionNode } from "@/lib/gazetteer";
 
 /**
  * Filters drive the URL, not local state.
@@ -16,15 +17,14 @@ export function SearchFilters({
   market,
   query,
   facets,
+  locations,
   total,
 }: {
   market: Market;
   query: SearchQuery;
-  facets: {
-    cities: { name: string; count: number }[];
-    localities: { name: string; count: number }[];
-    categories: { name: string; count: number }[];
-  };
+  facets: { categories: { name: string; count: number }[] };
+  /** Built on the server for this market only — see buildLocationTree. */
+  locations: LocationTree;
   total: number;
 }) {
   const router = useRouter();
@@ -42,9 +42,16 @@ export function SearchFilters({
   const cur = MARKETS[market].currencySymbol;
 
   return (
-    <div className="sticky top-[var(--header-h,4.25rem)] z-30 border border-line bg-surface/95 backdrop-blur-md">
-      {/* Always-visible row: the filters people reach for first. */}
-      <div className="flex flex-wrap items-center gap-3 p-4">
+    /*
+      Sticky only from sm up. The location filter added two more selects to
+      the top row; on a phone that row runs to several lines, and pinned under
+      the header it would cover most of the screen while scrolling results.
+      Below sm it scrolls away and the active-filter chips carry the state.
+    */
+    <div className="z-30 border border-line bg-surface/95 backdrop-blur-md sm:sticky sm:top-[var(--header-h,4.25rem)]">
+      {/* Always-visible row: the filters people reach for first. Two tidy
+          columns on a phone rather than a ragged wrap. */}
+      <div className="grid grid-cols-2 gap-3 p-4 sm:flex sm:flex-wrap sm:items-end">
         <Select
           label="Type"
           value={query.transaction ?? ""}
@@ -57,18 +64,7 @@ export function SearchFilters({
           ]}
         />
 
-        <Select
-          label="Area"
-          value={query.locality ?? ""}
-          onChange={(v) => apply({ locality: v || undefined })}
-          options={[
-            { value: "", label: "All areas" },
-            ...facets.localities.map((l) => ({
-              value: l.name,
-              label: `${l.name} (${l.count})`,
-            })),
-          ]}
-        />
+        <LocationSelects locations={locations} query={query} apply={apply} />
 
         <Select
           label="Beds"
@@ -91,7 +87,7 @@ export function SearchFilters({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="label ml-auto border border-line px-4 py-2.5 transition-colors hover:border-brass"
+          className="label col-span-2 border border-line px-4 py-2.5 transition-colors hover:border-brass sm:ml-auto"
         >
           {open ? "Fewer filters" : "More filters"}
         </button>
@@ -99,16 +95,6 @@ export function SearchFilters({
 
       {open && (
         <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Select
-            label="City"
-            value={query.city ?? ""}
-            onChange={(v) => apply({ city: v || undefined })}
-            options={[
-              { value: "", label: "All cities" },
-              ...facets.cities.map((c) => ({ value: c.name, label: `${c.name} (${c.count})` })),
-            ]}
-          />
-
           <Select
             label="Property type"
             value={query.category ?? ""}
@@ -178,16 +164,23 @@ export function SearchFilters({
 
 /* ---------- primitives ---------- */
 
+type Option = { value: string; label: string };
+
 function Select({
   label,
   value,
   onChange,
   options,
+  groups,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: Option[];
+  /** Rendered as <optgroup>s after the flat options. Empty groups are skipped. */
+  groups?: { label: string; options: Option[] }[];
+  disabled?: boolean;
 }) {
   return (
     /*
@@ -207,13 +200,25 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full min-w-0 truncate border border-line bg-paper px-3 py-2 text-sm outline-none focus-visible:border-brass"
+        disabled={disabled}
+        className="w-full min-w-0 truncate border border-line bg-paper px-3 py-2 text-sm outline-none focus-visible:border-brass disabled:opacity-50"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
+        {groups?.map((g) =>
+          g.options.length ? (
+            <optgroup key={g.label} label={g.label}>
+              {g.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : null,
+        )}
       </select>
     </label>
   );
@@ -271,5 +276,146 @@ function Toggle({
       />
       <span className="text-sm">{label}</span>
     </label>
+  );
+}
+
+/* ---------- location: region -> city -> area ---------- */
+
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Separates city from area in an area option's value. Area names repeat across
+ * cities — "DHA Phase 6" in Lahore and Karachi, "West End" in three Scottish
+ * cities — so the name alone cannot say which one was meant.
+ */
+const SEP = "::";
+
+const withCount = (name: string, count: number) => (count > 0 ? `${name} (${count})` : name);
+
+/**
+ * Three cascading selects over the gazetteer.
+ *
+ * Nothing forces a top-down path: with no emirate chosen the city list shows
+ * every city grouped by emirate, and the area list every area grouped by city,
+ * so someone who knows they want Leith can pick Leith directly. Choosing a
+ * child fills in its parents, and choosing a parent drops any child that no
+ * longer sits inside it — the three always describe one coherent place.
+ *
+ * Counts are shown only where there is inventory. Places with none stay
+ * selectable on purpose: a saved search there is a demand signal.
+ */
+function LocationSelects({
+  locations,
+  query,
+  apply,
+}: {
+  locations: LocationTree;
+  query: SearchQuery;
+  apply: (patch: Partial<SearchQuery>) => void;
+}) {
+  const { regions, regionLabel, regionLabelPlural } = locations;
+  const pickable = regions.filter((r) => !r.other);
+  const allCities = regions.flatMap((r) => r.cities);
+
+  const regionOf = (city: string): RegionNode | undefined =>
+    regions.find((r) => r.cities.some((c) => same(c.name, city)));
+  const regionName = (city: string) => {
+    const r = regionOf(city);
+    return r && !r.other ? r.name : undefined;
+  };
+
+  const selRegion = query.region ? pickable.find((r) => same(r.name, query.region!)) : undefined;
+  const selCity = query.city ? allCities.find((c) => same(c.name, query.city!)) : undefined;
+
+  // Which city an already-chosen area belongs to, for areas that arrived
+  // without a city — older links and saved searches carried locality alone.
+  const scope = selCity ? [selCity] : (selRegion?.cities ?? allCities);
+  const areaCity = query.locality
+    ? scope.find((c) => c.areas.some((a) => same(a.name, query.locality!)))
+    : undefined;
+  const areaName = areaCity?.areas.find((a) => same(a.name, query.locality!))?.name;
+
+  const areaValue = query.locality
+    ? areaCity && areaName
+      ? `${areaCity.name}${SEP}${areaName}`
+      : `${SEP}${query.locality}`
+    : "";
+
+  // A locality the tree does not know (a raw name from an old saved search)
+  // still has to show in the control, or the select would claim "All areas"
+  // while the results are filtered.
+  const orphan =
+    query.locality && !areaName ? [{ value: `${SEP}${query.locality}`, label: query.locality }] : [];
+
+  const areaOptions = (c: (typeof allCities)[number]) =>
+    c.areas.map((a) => ({ value: `${c.name}${SEP}${a.name}`, label: withCount(a.name, a.count) }));
+
+  return (
+    <>
+      <Select
+        label={regionLabel}
+        value={selRegion?.name ?? ""}
+        onChange={(v) => {
+          if (!v) return apply({ region: undefined, city: undefined, locality: undefined });
+          const r = pickable.find((x) => x.name === v);
+          const keep = Boolean(selCity && r?.cities.some((c) => c.name === selCity.name));
+          apply({
+            region: v,
+            city: keep ? selCity!.name : undefined,
+            locality: keep ? query.locality : undefined,
+          });
+        }}
+        options={[
+          { value: "", label: `All ${regionLabelPlural}` },
+          ...pickable.map((r) => ({ value: r.name, label: withCount(r.name, r.count) })),
+        ]}
+      />
+
+      <Select
+        label="City"
+        value={selCity?.name ?? ""}
+        onChange={(v) =>
+          v
+            ? apply({ region: regionName(v), city: v, locality: undefined })
+            : apply({ city: undefined, locality: undefined })
+        }
+        options={[
+          { value: "", label: "All cities" },
+          ...(selRegion
+            ? selRegion.cities.map((c) => ({ value: c.name, label: withCount(c.name, c.count) }))
+            : []),
+        ]}
+        groups={
+          selRegion
+            ? undefined
+            : regions.map((r) => ({
+                label: r.name,
+                options: r.cities.map((c) => ({ value: c.name, label: withCount(c.name, c.count) })),
+              }))
+        }
+      />
+
+      <Select
+        label="Area"
+        value={areaValue}
+        disabled={Boolean(selCity && selCity.areas.length === 0)}
+        onChange={(v) => {
+          if (!v) return apply({ locality: undefined });
+          const [cityName, area] = v.split(SEP);
+          if (!cityName) return apply({ locality: area });
+          apply({ region: regionName(cityName), city: cityName, locality: area });
+        }}
+        options={[
+          { value: "", label: "All areas" },
+          ...orphan,
+          ...(selCity ? areaOptions(selCity) : []),
+        ]}
+        groups={
+          selCity
+            ? undefined
+            : (selRegion?.cities ?? allCities).map((c) => ({ label: c.name, options: areaOptions(c) }))
+        }
+      />
+    </>
   );
 }

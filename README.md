@@ -292,6 +292,33 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Location filter
+
+Search filters by **region → city → area**: emirates in the UAE, the four
+nations in the UK, provinces in Pakistan. Pakistan is Defence-only for now —
+DHA schemes and phases. A non-DHA Pakistani listing (Clifton, Bahria) is still
+found by its city; it just has no area option yet.
+
+The hierarchy lives in `src/lib/gazetteer.ts` as plain data, not in inventory.
+The Area filter used to be built only from what happened to be listed, so a
+buyer looking for Leith or Saadiyat was told, in effect, that the place did not
+exist. Places with no stock stay selectable on purpose: a saved search there
+feeds the demand-by-area report.
+
+Listings keep free-text `city` and `locality`. `resolvePlace` maps them onto the
+tree by whole-word, longest match — "Meydan District 11" is Meydan, "DHA Phase 1"
+never matches "DHA Phase 12", "Defence" reads as DHA — and it looks for an area
+only inside the listing's city, because "DHA Phase 6" exists in both Lahore and
+Karachi. The raw text is still accepted alongside the resolved name, so saved
+searches stored before the gazetteer keep matching.
+
+Places are resolved once in `getListings`, not in the search predicate.
+`search.ts` is imported by client components, and while it imported the
+gazetteer the area lists shipped to every browser as dead code.
+
+To widen Pakistan beyond DHA, add areas to its cities and set
+`extendFromInventory: true`.
+
 ## The build option
 
 **`build` is a third transaction type**, alongside `sale` and `rent` — a plot

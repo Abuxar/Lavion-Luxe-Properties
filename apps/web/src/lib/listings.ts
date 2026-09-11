@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { toSqft, type Market } from "@lavion/schema";
 import type { Transaction } from "@lavion/schema";
+import { resolvePlace, type ResolvedPlace } from "./gazetteer";
 
 /**
  * Data access for the web app.
@@ -26,7 +27,17 @@ export interface ListingSummary {
   bedrooms?: number;
   bathrooms?: number;
   tenure?: string;
-  location: { locality: string; city: string; freeholdZone?: boolean };
+  location: {
+    locality: string;
+    city: string;
+    freeholdZone?: boolean;
+    /**
+     * Where this sits in the gazetteer, resolved once as inventory loads (see
+     * withPlaces). Search matches against it, which is what keeps the
+     * gazetteer out of the search module and therefore out of the browser.
+     */
+    place?: ResolvedPlace;
+  };
   media: { cloudinaryId: string; alt?: string }[];
   publishedAt?: string;
   promotion?: {
@@ -258,12 +269,28 @@ export async function getListings(
     const res = await fetch(url);
     if (!res.ok) throw new Error(`api ${res.status}`);
     const data = await res.json();
-    if (Array.isArray(data.items) && data.items.length) return data.items;
+    if (Array.isArray(data.items) && data.items.length) return withPlaces(market, data.items);
     throw new Error("empty");
   } catch {
     const items = [...(await adminPublished(market)), ...SAMPLE.filter((l) => l.market === market)];
-    return opts.limit ? items.slice(0, opts.limit) : items;
+    return withPlaces(market, opts.limit ? items.slice(0, opts.limit) : items);
   }
+}
+
+/**
+ * Attach each listing's gazetteer place.
+ *
+ * Once per load, inside the cache, rather than per query in the search
+ * predicate. The search module is imported by client components, and while it
+ * resolved places itself the gazetteer's area lists shipped to every browser
+ * as dead code: the tree object was shaken out, but the helper calls that
+ * built it were kept because a minifier cannot prove a call is pure.
+ */
+function withPlaces(market: Market, rows: ListingSummary[]): ListingSummary[] {
+  return rows.map((l) => ({
+    ...l,
+    location: { ...l.location, place: resolvePlace(market, l.location.city, l.location.locality) },
+  }));
 }
 
 /**

@@ -146,7 +146,7 @@ export async function demandByArea(): Promise<
 
   for (const r of rows) {
     if (!r.active) continue;
-    const area = r.query.locality ?? r.query.city ?? "Anywhere";
+    const area = r.query.locality ?? r.query.city ?? r.query.region ?? "Anywhere";
     const key = `${r.market}:${area}`;
     const prev = map.get(key);
     map.set(key, {

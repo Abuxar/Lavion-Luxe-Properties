@@ -12,6 +12,8 @@ import type { ListingSummary } from "./listings";
 
 export interface SearchQuery {
   transaction?: Transaction;
+  /** Emirate, UK nation or Pakistani province — see gazetteer.ts. */
+  region?: string;
   city?: string;
   locality?: string;
   category?: string;
@@ -63,6 +65,7 @@ export function parseQuery(sp: Raw): SearchQuery {
     // imported by the client filter component, and pulling a schema value in
     // would drag zod into the bundle on the page audited for INP.
     transaction: TRANSACTIONS.includes(t as Transaction) ? (t as Transaction) : undefined,
+    region: one(sp, "region"),
     city: one(sp, "city"),
     locality: one(sp, "locality"),
     category: one(sp, "category"),
@@ -86,6 +89,7 @@ export function toSearchParams(q: Partial<SearchQuery>): string {
     p.set(k, String(v));
   };
   set("transaction", q.transaction);
+  set("region", q.region);
   set("city", q.city);
   set("locality", q.locality);
   set("category", q.category);
@@ -104,6 +108,7 @@ export function toSearchParams(q: Partial<SearchQuery>): string {
 export function isFiltered(q: SearchQuery): boolean {
   return Boolean(
     q.transaction ||
+      q.region ||
       q.city ||
       q.locality ||
       q.category ||
@@ -119,11 +124,27 @@ export function isFiltered(q: SearchQuery): boolean {
 
 const norm = (s: string) => s.trim().toLowerCase();
 
+/** True when any of the candidate names is the one asked for. */
+const sameName = (want: string, ...have: (string | undefined)[]) =>
+  have.some((h) => h !== undefined && norm(h) === norm(want));
+
 /** The single predicate. Both search results and alert matching call this. */
 export function matches(l: ListingSummary, q: SearchQuery): boolean {
   if (q.transaction && l.transaction !== q.transaction) return false;
-  if (q.city && norm(l.location.city) !== norm(q.city)) return false;
-  if (q.locality && norm(l.location.locality) !== norm(q.locality)) return false;
+
+  // Location goes through the gazetteer, so "Meydan District 11" is found
+  // under Meydan and "DHA Defence Phase 6" under DHA Phase 6. The raw text is
+  // still accepted alongside the resolved name: saved searches stored before
+  // the gazetteer existed hold raw names, and they must keep matching.
+  if (q.region || q.city || q.locality) {
+    // Resolved once by getListings (withPlaces). This module must not import
+    // the gazetteer itself: client components import it, and the area lists
+    // would ride along into the browser.
+    const p = l.location.place;
+    if (q.region && !sameName(q.region, p?.region)) return false;
+    if (q.city && !sameName(q.city, p?.city, l.location.city)) return false;
+    if (q.locality && !sameName(q.locality, p?.area, l.location.locality)) return false;
+  }
   if (q.category && l.category !== q.category) return false;
   if (q.minPrice !== undefined && l.price.amount < q.minPrice) return false;
   if (q.maxPrice !== undefined && l.price.amount > q.maxPrice) return false;
@@ -219,6 +240,7 @@ export function describeQuery(q: SearchQuery, market: Market): string {
   bits.push(q.transaction === "rent" ? "to rent" : "for sale");
   if (q.locality) bits.push(`in ${q.locality}`);
   else if (q.city) bits.push(`in ${q.city}`);
+  else if (q.region) bits.push(`in ${q.region}`);
   else bits.push(`in ${market.toUpperCase()}`);
   if (q.maxPrice) bits.push(`under ${q.maxPrice.toLocaleString()}`);
   if (q.minPrice && !q.maxPrice) bits.push(`over ${q.minPrice.toLocaleString()}`);

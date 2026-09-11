@@ -7,6 +7,7 @@ import { SaveSearch } from "@/components/save-search";
 import { ActiveFilters } from "@/components/active-filters";
 import { SearchFilters } from "@/components/search-filters";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { buildLocationTree } from "@/lib/gazetteer";
 import { getListings } from "@/lib/listings";
 import {
   describeQuery,
@@ -89,6 +90,8 @@ async function Results({
 
   const all = await getListings(market);
   const facets = facetsFor(all);
+  // Only this market's tree reaches the client, counted from live inventory.
+  const locations = buildLocationTree(market, all);
   const { items, total, pages, page } = runSearch(all, query);
   const filtered = isFiltered(query);
 
@@ -99,7 +102,13 @@ async function Results({
 
   return (
     <>
-      <SearchFilters market={market} query={query} facets={facets} total={total} />
+      <SearchFilters
+        market={market}
+        query={query}
+        facets={facets}
+        locations={locations}
+        total={total}
+      />
 
       <ActiveFilters market={market} query={query} />
 

@@ -12,6 +12,10 @@ import { toSearchParams, type SearchQuery } from "@/lib/search";
  * choices to undo one. Each chip drops exactly its own field and resets to
  * page 1, since removing a filter widens the set and the old page number may
  * no longer exist.
+ *
+ * The exception is location, which is a hierarchy: removing a country also
+ * removes the city and area inside it, and removing a city its area. Leaving
+ * them would read "Chelsea" with no London and no England.
  */
 export function ActiveFilters({
   market,
@@ -27,8 +31,10 @@ export function ActiveFilters({
 
   if (query.transaction)
     chips.push({ key: "transaction", label: TRANSACTION_LABEL[query.transaction] });
-  if (query.locality) chips.push({ key: "locality", label: query.locality });
+  // Broadest first, so the chips read as an address: Scotland, Edinburgh, Leith.
+  if (query.region) chips.push({ key: "region", label: query.region });
   if (query.city) chips.push({ key: "city", label: query.city });
+  if (query.locality) chips.push({ key: "locality", label: query.locality });
   if (query.category)
     chips.push({
       key: "category",
@@ -46,7 +52,13 @@ export function ActiveFilters({
   if (chips.length === 0) return null;
 
   const without = (key: keyof SearchQuery) => {
-    const next = { ...query, [key]: undefined, page: 1 };
+    const drop: Partial<SearchQuery> =
+      key === "region"
+        ? { region: undefined, city: undefined, locality: undefined }
+        : key === "city"
+          ? { city: undefined, locality: undefined }
+          : { [key]: undefined };
+    const next = { ...query, ...drop, page: 1 };
     const qs = toSearchParams(next);
     return qs ? `/${market}/search?${qs}` : `/${market}/search`;
   };
