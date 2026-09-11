@@ -71,6 +71,19 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["gsap", "lucide-react"],
   },
 
+  async redirects() {
+    return [
+      {
+        // The featured-partner page was removed when Lavion Luxe Properties
+        // moved to a site of its own. It was live and linked from every market
+        // page, so old links land on the market rather than a 404.
+        source: "/:market(uk|ae|pk)/partner",
+        destination: "/:market",
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

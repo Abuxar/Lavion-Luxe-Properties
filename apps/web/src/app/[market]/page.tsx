@@ -8,8 +8,6 @@ import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getListings } from "@/lib/listings";
 import { getAreaTaxonomy } from "@/lib/areas";
-import { featuredPartner } from "@/lib/accounts";
-import { PartnerCard } from "@/components/partner-card";
 import { ScrollCue } from "@/components/scroll-cue";
 import { MarketStats } from "@/components/market-stats";
 import { BRAND_NAME } from "@/lib/brand";
@@ -131,11 +129,6 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
           <MarketStats market={m} />
         </Suspense>
 
-        {/* ---------- featured partner, above the rest ---------- */}
-        <Suspense fallback={null}>
-          <Partner market={m} />
-        </Suspense>
-
         {/* ---------- inventory ---------- */}
         <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
@@ -237,16 +230,6 @@ async function AreaLinks({ market }: { market: Market }) {
           </li>
         ))}
       </ul>
-    </section>
-  );
-}
-
-async function Partner({ market }: { market: Market }) {
-  const partner = await featuredPartner(market);
-  if (!partner) return null;
-  return (
-    <section className="mx-auto max-w-[1400px] px-6 pt-16">
-      <PartnerCard partner={partner} market={market} />
     </section>
   );
 }
