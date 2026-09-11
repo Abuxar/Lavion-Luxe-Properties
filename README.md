@@ -292,6 +292,35 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## How buying works, per market
+
+The listing page used to run one mortgage calculator everywhere. That describes
+a UK or UAE purchase and misdescribes a Pakistani one. Each market now shows its
+own process, with the numbers shaped by it:
+
+- **Pakistan** — verify the file first, pay the seller a token (bayana), pay the
+  balance in full on a fixed date, transfer at the society or DHA. No loan and
+  no interest, so the panel shows the token, the balance with its actual due
+  date, "Interest: None", and a total paid equal to the price.
+- **UK** — solicitors on both sides; an accepted offer is not binding until
+  contracts are exchanged (usually a 10% deposit), then the balance at
+  completion. Mortgage calculator plus when each payment falls due.
+- **UAE** — MOU (Form F in Dubai) with a 10% security deposit, mortgage approval
+  and developer NOC, then the balance at the land department transfer.
+
+The steps are server-rendered (`buying-steps.tsx`, data in `buying-process.ts`)
+so they are in the HTML and cost no JavaScript; only the numbers stay in the
+deferred client widget. Off-plan listings get the market's off-plan note, and
+rentals show neither. Everything is general orientation with a stated caveat,
+not legal advice.
+
+**Layout shift.** `DeferUntilVisible` holds its reserved space until the child
+has actually rendered, not merely until it decides to load. The child is a
+`next/dynamic` import that renders nothing while its chunk downloads; dropping
+the space at that point collapsed it and re-expanded it, moving the sidebar
+~750px on a phone. Reserved heights are per market and breakpoint in
+`lazy-yield-calculator.tsx` — re-measure them if the panel's content changes.
+
 ## Location filter
 
 Search filters by **region → city → area**: emirates in the UAE, the four

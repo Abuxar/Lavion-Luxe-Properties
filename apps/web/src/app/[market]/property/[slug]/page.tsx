@@ -7,6 +7,7 @@ import { EnquiryForm } from "@/components/enquiry-form";
 import { PropertyGallery } from "@/components/property-gallery";
 import { SaveButton } from "@/components/shortlist";
 import { LazyYieldCalculator } from "@/components/lazy-yield-calculator";
+import { BuyingSteps } from "@/components/buying-steps";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { routeToAgent } from "@/lib/agents";
@@ -170,11 +171,19 @@ export default async function PropertyPage({
 
             <ComplianceBlock listing={listing} market={m} />
 
-            <LazyYieldCalculator
-              price={listing.price.amount}
-              currency={listing.price.currency}
-              market={m}
-            />
+            {/* How a purchase goes through here, then the numbers shaped by it.
+                Not shown on rentals: a token schedule or a mortgage on a
+                property that is only for rent answers a question nobody asked. */}
+            {listing.transaction !== "rent" && (
+              <>
+                <BuyingSteps market={m} offPlan={listing.offPlan} />
+                <LazyYieldCalculator
+                  price={listing.price.amount}
+                  currency={listing.price.currency}
+                  market={m}
+                />
+              </>
+            )}
           </div>
 
           {/* ---------- sidebar ---------- */}
