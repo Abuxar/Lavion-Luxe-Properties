@@ -56,21 +56,25 @@ export async function createFeedSource(input: {
   mapping?: Record<string, string>;
   autoPublish?: boolean;
 }): Promise<FeedSource> {
-  const rows = await store.all();
-  const source: FeedSource = {
-    id: nextId(rows),
-    agencyName: input.agencyName,
-    market: input.market,
-    format: input.format,
-    url: input.url,
-    mapping: input.mapping ?? {},
-    // Default false, always: a new source has not earned direct publication.
-    autoPublish: input.autoPublish ?? false,
-    active: true,
-    createdAt: new Date(),
-  };
-  await store.replace([...rows, source]);
-  return source;
+  // The id is computed inside the retry, so two sources created at once
+  // cannot both take the same one.
+  const out: { source?: FeedSource } = {};
+  await store.mutate((rows) => {
+    out.source = {
+      id: nextId(rows),
+      agencyName: input.agencyName,
+      market: input.market,
+      format: input.format,
+      url: input.url,
+      mapping: input.mapping ?? {},
+      // Default false, always: a new source has not earned direct publication.
+      autoPublish: input.autoPublish ?? false,
+      active: true,
+      createdAt: new Date(),
+    };
+    return [...rows, out.source];
+  });
+  return out.source!;
 }
 
 export async function setFeedActive(id: string, active: boolean) {
@@ -78,8 +82,9 @@ export async function setFeedActive(id: string, active: boolean) {
 }
 
 export async function deleteFeedSource(id: string) {
-  const rows = await store.all();
-  await store.replace(rows.filter((r) => r.id !== id));
+  await store.mutate((rows) =>
+    rows.some((r) => r.id === id) ? rows.filter((r) => r.id !== id) : null,
+  );
 }
 
 /** Fetches a remote feed. Kept separate so a run can also take pasted text. */

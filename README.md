@@ -292,6 +292,26 @@ catalogue. **Demand by area** ranks what buyers are asking for — an area with
 subscribers and zero matching inventory is the clearest signal of what to
 onboard next.
 
+## Queue storage
+
+The queues are JSON documents in Vercel Blob, and Blob serves an overwritten
+file's previous content for up to a minute — measured at 6 to 33 seconds, on
+every read path including `get({ useCache: false })`. A read-modify-write on an
+overwritten file therefore built on stale data: blind overwrites lost 6 of 8
+concurrent updates, and an admin password change was undone by the next sign-in.
+
+So nothing is overwritten. Every write creates `queue/v2/<name>/<seq>.json`, and
+creating a version that already exists fails atomically — two writers who read
+version N cannot both write N+1; the loser re-reads and re-applies its change.
+A new name has no stale copy anywhere, so reads are current immediately. The
+latest version is found by walking `head()` forward, which is cheap on the Hobby
+quota; `list()` runs once per cold instance. The last 20 versions are kept.
+`src/lib/versioned-doc.ts` has the measurements.
+
+Local runs and previews write `queue/v2-local/` and `queue/v2-preview/`, never
+production's data. The old single files (`queue/*.json`) are read once to seed
+version 1 and then left alone. This layer is what MongoDB Atlas replaces.
+
 ## Queue encryption
 
 The review queue, users, leads and saved searches are JSON documents in a

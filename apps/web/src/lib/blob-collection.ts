@@ -1,101 +1,76 @@
 import "server-only";
-import { head, put } from "@vercel/blob";
-import { isEncrypted, open, seal } from "./queue-crypto";
+import { createVersionedDoc } from "./versioned-doc";
 
 /**
- * A JSON collection persisted as a single Blob document.
+ * A JSON collection persisted in Blob storage.
  *
- * Extracted from the submission store so leads reuse it rather than repeating
- * the same load/save/revive dance. A module-level Map does not work on
- * serverless — instances come and go per request, so a write on one is
- * invisible to the next read.
+ * Shared by users, agencies, leads, saved searches and feed sources. Backed by
+ * versioned-doc.ts, which never overwrites: every write is a new immutable
+ * version and creating one that already exists fails. That is what makes a
+ * read-modify-write safe here — see that file for what was measured and why
+ * overwriting a single file could not be made to work.
  *
- * KNOWN LIMIT — read-modify-write. Concurrent writers can clobber one another.
- * Acceptable for internal queues at this volume; it disappears when these move
- * to Atlas and each mutation becomes a single document update.
+ * Two ways to change a collection:
+ *  - add / update / mutate re-read and re-apply automatically if another
+ *    writer got in first. Anything that derives something from the current
+ *    rows (the next id, a duplicate check) belongs inside mutate's function,
+ *    so a retry recomputes it rather than reusing a stale answer.
+ *  - replace(basedOn, next) writes one whole new version and throws if the
+ *    collection changed since `basedOn` was read. It never overwrites a
+ *    change it did not see.
  */
 export interface BlobCollection<T> {
   all(): Promise<T[]>;
-  replace(rows: T[]): Promise<void>;
+  /** Write `next` as the successor of `basedOn`, which must come from all(). */
+  replace(basedOn: T[], next: T[]): Promise<void>;
   add(row: T): Promise<T>;
   update(match: (row: T) => boolean, next: (row: T) => T): Promise<T | null>;
+  /** Read, change, write — re-run on conflict. Return null for a no-op. */
+  mutate(change: (rows: T[]) => T[] | null): Promise<void>;
 }
 
 export function createBlobCollection<T>(opts: {
+  /** The collection's historical single-file key, e.g. "queue/users.json". */
   key: string;
   seed: T[];
   /** JSON hands dates back as strings; anything compared or formatted needs reviving. */
   revive?: (rows: T[]) => T[];
-  /** Memo window, in ms, to avoid re-fetching within a single request. */
+  /** Within one instance, reuse a read this recent. */
   memoMs?: number;
 }): BlobCollection<T> {
-  const { key, seed, revive = (r) => r, memoMs = 1000 } = opts;
-  let memo: { at: number; data: T[] } | null = null;
-
-  const configured = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-
-  async function all(): Promise<T[]> {
-    // With no Blob token the memo is the only store — returning the seed here
-    // would discard every write made this run.
-    if (!configured()) return memo?.data ?? seed;
-    if (memo && Date.now() - memo.at < memoMs) return memo.data;
-
-    const meta = await head(key).catch(() => null);
-    if (!meta) {
-      await replace(seed);
-      return seed;
-    }
-
-    // The document EXISTS from here on, so a read failure must propagate
-    // rather than fall back to the seed. Handing back demo rows for a live
-    // collection is not a degraded read — the next write would commit them
-    // over the real ones. That matters most for users.json, where the seed
-    // would silently replace the account list.
-    // no-store: the blob URL is CDN-backed, and a stale read would resurrect
-    // deleted rows or hide something just written.
-    const res = await fetch(meta.url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`blob read ${res.status}`);
-    const data = revive(open<T[]>(await res.text()));
-    memo = { at: Date.now(), data };
-    return data;
-  }
-
-  async function replace(rows: T[]): Promise<void> {
-    memo = { at: Date.now(), data: rows };
-    if (!configured()) return;
-    try {
-      await put(key, seal(rows), {
-        access: "public",
-        // Encrypted at rest — see queue-crypto.ts. These documents carry
-        // password hashes and customer contact details, and the store itself
-        // is public.
-        contentType: isEncrypted() ? "application/octet-stream" : "application/json",
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        cacheControlMaxAge: 0,
-      });
-    } catch {
-      // Keep the in-instance copy so the current request still behaves.
-    }
-  }
+  const doc = createVersionedDoc<T>({
+    name: opts.key.replace(/^queue\//, "").replace(/\.json$/, ""),
+    legacyKey: opts.key,
+    seed: opts.seed,
+    revive: opts.revive,
+    freshMs: opts.memoMs,
+  });
 
   async function add(row: T): Promise<T> {
-    const rows = await all();
-    await replace([...rows, row]);
+    await doc.mutate((rows) => [...rows, row]);
     return row;
   }
 
-  async function update(
-    match: (row: T) => boolean,
-    next: (row: T) => T,
-  ): Promise<T | null> {
-    const rows = await all();
-    const found = rows.find(match);
-    if (!found) return null;
-    const updated = next(found);
-    await replace(rows.map((r) => (match(r) ? updated : r)));
+  async function update(match: (row: T) => boolean, next: (row: T) => T): Promise<T | null> {
+    let updated: T | null = null;
+    await doc.mutate((rows) => {
+      const found = rows.find(match);
+      if (!found) {
+        updated = null;
+        return null;
+      }
+      const u = next(found);
+      updated = u;
+      return rows.map((r) => (match(r) ? u : r));
+    });
     return updated;
   }
 
-  return { all, replace, add, update };
+  return {
+    all: () => doc.read(),
+    replace: (basedOn, next) => doc.write(basedOn, next),
+    add,
+    update,
+    mutate: (change) => doc.mutate(change),
+  };
 }

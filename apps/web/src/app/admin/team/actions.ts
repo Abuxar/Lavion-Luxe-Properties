@@ -89,8 +89,8 @@ export async function setPasswordAction(
   if (!(await requireStaff())) return { status: "error", message: "Not permitted." };
 
   const id = str(formData, "userId");
-  const password = String(formData.get("password") ?? "");
-  const confirm = String(formData.get("confirm") ?? "");
+  const password = String(formData.get("newPassword") ?? "");
+  const confirm = String(formData.get("newPasswordConfirm") ?? "");
 
   if (!id) return { status: "error", message: "Pick an account." };
   if (password !== confirm) return { status: "error", message: "The two passwords do not match." };

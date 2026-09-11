@@ -1,6 +1,5 @@
 import "server-only";
-import { head, put } from "@vercel/blob";
-import { isEncrypted, open, seal } from "./queue-crypto";
+import { createVersionedDoc, type VersionedDoc } from "./versioned-doc";
 import type { Submission } from "./submissions-types";
 
 /**
@@ -23,8 +22,7 @@ import type { Submission } from "./submissions-types";
 
 const KEY = "queue/submissions.json";
 
-/** In-instance memo, so one request does not re-fetch the blob repeatedly. */
-let memo: { at: number; data: Submission[] } | null = null;
+/** Within one instance, reuse a read this recent. */
 const MEMO_MS = 1000;
 
 /** Dates survive JSON as strings; the publish gates compare them, so revive. */
@@ -70,63 +68,46 @@ function configured(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+/**
+ * Backed by versioned-doc.ts: every save is a new immutable version, and
+ * creating one that already exists fails. The single overwritten file this
+ * used to be could serve a stale queue for up to a minute after a write, so a
+ * save built on it could silently undo an approval made seconds earlier.
+ * The old file is read once, on first use, to seed version 1.
+ */
+let doc: VersionedDoc<Submission> | null = null;
+
+function queue(seed: Submission[]): VersionedDoc<Submission> {
+  doc ??= createVersionedDoc<Submission>({
+    name: "submissions",
+    legacyKey: KEY,
+    seed,
+    revive: reviveDates,
+    freshMs: MEMO_MS,
+  });
+  return doc;
+}
+
 export async function loadAll(seed: Submission[]): Promise<Submission[]> {
-  // With no Blob token, the in-memory copy is the only store there is —
-  // returning the seed here would discard every write made this run.
-  if (!configured()) return memo?.data ?? seed;
-
-  if (memo && Date.now() - memo.at < MEMO_MS) return memo.data;
-
-  const meta = await head(KEY).catch(() => null);
-  if (!meta) {
-    // First run — lay down the seed so the queue is never empty.
-    await saveAll(seed);
-    memo = { at: Date.now(), data: seed };
-    return seed;
-  }
-
-  // The document EXISTS from here on, so a failure to read it must not fall
-  // back to the seed. Returning demo rows for a real queue is not a degraded
-  // read, it is data loss waiting for the next write to commit it.
-  // cache: "no-store" matters: the blob URL is CDN-backed and a stale read
-  // here would resurrect deleted rows or hide a just-created listing.
-  const res = await fetch(meta.url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`blob read ${res.status}`);
-
-  const data = reviveDates(open<Submission[]>(await res.text()));
-  memo = { at: Date.now(), data };
-  return data;
+  return queue(seed).read();
 }
 
-export async function saveAll(subs: Submission[]): Promise<void> {
-  // Update the in-instance copy FIRST, before the configured check. Returning
-  // early used to discard the write entirely when no Blob token was present,
-  // so a local dev run reported "created" and then read back nothing.
-  // blob-collection.ts already behaved this way; these are now consistent.
-  memo = { at: Date.now(), data: subs };
-  if (!configured()) return;
-  try {
-    await put(KEY, seal(subs), {
-      access: "public",
-      // Encrypted at rest — see queue-crypto.ts. The store is a public store,
-      // so the object is fetchable by anyone; the contents are not readable.
-      contentType: isEncrypted() ? "application/octet-stream" : "application/json",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      // Never let the CDN serve a stale queue back to us.
-      cacheControlMaxAge: 0,
-    });
-  } catch {
-    // Remote write failed; the in-instance copy above still serves this request.
-  }
+/**
+ * Save `subs` as the successor of `basedOn`, which must be the array
+ * loadAll() returned. Throws VersionConflict if the queue changed in between
+ * — it never overwrites a change it did not see.
+ */
+export async function saveAll(basedOn: Submission[], subs: Submission[]): Promise<void> {
+  if (!doc) throw new Error("submissions: saveAll() before loadAll()");
+  await doc.write(basedOn, subs);
 }
 
-export function invalidateMemo(): void {
-  memo = null;
-}
+/** Kept for callers; versioned-doc already re-checks the store before every write. */
+export function invalidateMemo(): void {}
 
 export function isDurable(): boolean {
   return configured();
 }
 
 export { isEncrypted } from "./queue-crypto";
+export { VersionConflict } from "./versioned-doc";

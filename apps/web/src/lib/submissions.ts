@@ -1,5 +1,5 @@
 import "server-only";
-import { loadAll, saveAll } from "./submission-store";
+import { VersionConflict, loadAll, saveAll } from "./submission-store";
 import type { Submission, SubmissionStatus } from "./submissions-types";
 import type { Promotion } from "@lavion/schema";
 import {
@@ -230,8 +230,28 @@ async function read(): Promise<Submission[]> {
   return loadAll(SEED);
 }
 
-async function write(subs: Submission[]): Promise<void> {
-  await saveAll(subs);
+async function write(basedOn: Submission[], subs: Submission[]): Promise<void> {
+  await saveAll(basedOn, subs);
+}
+
+/**
+ * Re-run an append if the queue changed between reading and saving. Used for
+ * submissions that arrive from outside — a seller on the public form, a feed
+ * import — where an error would lose the submission; the function re-reads,
+ * so the new id is recomputed against the latest queue.
+ */
+async function retrying<R>(fn: () => Promise<R>): Promise<R> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof VersionConflict && attempt < 8) {
+        await new Promise((r) => setTimeout(r, Math.random() * 120 * attempt + 30));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 function nextId(subs: Submission[]): string {
@@ -266,7 +286,7 @@ export async function getSubmission(id: string): Promise<SubmissionWithGates | n
   return s ? withGates(s) : null;
 }
 
-export async function createSubmission(input: {
+async function createSubmissionOnce(input: {
   submitterName: string;
   submitterEmail: string;
   listing: ListingInput;
@@ -281,7 +301,7 @@ export async function createSubmission(input: {
     status: "pending_review",
     listing: { ...input.listing, source: "self_submitted", status: "pending_review" },
   };
-  await write([...all, submission]);
+  await write(all, [...all, submission]);
   return withGates(submission);
 }
 
@@ -321,7 +341,7 @@ export async function approveSubmission(
     },
   };
 
-  await write(all.map((x) => (x.id === id ? updated : x)));
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
   return { ok: true, submission: withGates(updated) };
 }
 
@@ -363,7 +383,7 @@ export async function createAdminListing(input: {
     },
   };
 
-  await write([...all, submission]);
+  await write(all, [...all, submission]);
   return { submission: withGates(submission), published: canPublish, gates };
 }
 
@@ -391,7 +411,7 @@ export async function updateSubmissionListing(
     ...s,
     listing: { ...listing, source: s.listing.source, status: "pending_review" },
   };
-  await write(all.map((x) => (x.id === id ? updated : x)));
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
   return { ok: true, submission: withGates(updated) };
 }
 
@@ -406,7 +426,7 @@ export async function rejectSubmission(id: string, note: string): Promise<Submis
     reviewNote: note,
     listing: { ...s.listing, status: "withdrawn" },
   };
-  await write(all.map((x) => (x.id === id ? updated : x)));
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
   return withGates(updated);
 }
 
@@ -449,7 +469,7 @@ export async function promoteListing(id: string, promotion: Promotion) {
   const s = all.find((x) => x.id === id);
   if (!s) return null;
   const updated = { ...s, listing: { ...s.listing, promotion } };
-  await write(all.map((x) => (x.id === id ? updated : x)));
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
   return withGates(updated);
 }
 
@@ -459,7 +479,7 @@ export async function clearPromotion(id: string) {
   if (!s) return null;
   const { promotion: _drop, ...listing } = s.listing;
   const updated = { ...s, listing };
-  await write(all.map((x) => (x.id === id ? updated : x)));
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
   return withGates(updated);
 }
 
@@ -480,7 +500,7 @@ export async function publishedSubmissions() {
  * decision and any promotion — a re-sync refreshes the agency's data, it does
  * not undo an admin's judgement or wipe paid placement.
  */
-export async function importFeedListing(input: {
+async function importFeedListingOnce(input: {
   listing: ListingInput;
   externalRef: string;
   feedSourceId: string;
@@ -513,7 +533,7 @@ export async function importFeedListing(input: {
         ],
       },
     };
-    await write(all.map((s) => (s.id === existing.id ? updated : s)));
+    await write(all, all.map((s) => (s.id === existing.id ? updated : s)));
     return { action: "updated", submission: withGates(updated) };
   }
 
@@ -532,6 +552,16 @@ export async function importFeedListing(input: {
     },
   };
 
-  await write([...all, submission]);
+  await write(all, [...all, submission]);
   return { action: "created", submission: withGates(submission) };
+}
+
+/** Retried on a queue conflict — see `retrying`. */
+export function createSubmission(input: Parameters<typeof createSubmissionOnce>[0]) {
+  return retrying(() => createSubmissionOnce(input));
+}
+
+/** Retried on a queue conflict — see `retrying`. */
+export function importFeedListing(input: Parameters<typeof importFeedListingOnce>[0]) {
+  return retrying(() => importFeedListingOnce(input));
 }

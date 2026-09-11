@@ -68,20 +68,35 @@ export async function saveSearch(input: {
   const current = await getListings(input.market);
   const seenSlugs = current.filter((l) => matches(l, input.query)).map((l) => l.slug);
 
-  const saved: SavedSearch = {
-    id: nextId(rows),
-    createdAt: new Date().toISOString(),
-    market: input.market,
-    email: input.email,
-    name: input.name,
-    query: input.query,
-    label: input.label,
-    seenSlugs,
-    active: true,
-  };
-
-  await store.replace([...rows, saved]);
-  return { saved, duplicate: false };
+  // The duplicate check and the id both re-run inside the retry: two
+  // identical subscriptions submitted at once must still yield one.
+  const out: { saved?: SavedSearch; duplicate?: SavedSearch } = {};
+  await store.mutate((latest) => {
+    const again = latest.find(
+      (r) =>
+      r.email.toLowerCase() === input.email.toLowerCase() &&
+      r.market === input.market &&
+      JSON.stringify(r.query) === JSON.stringify(input.query),
+    );
+    if (again) {
+      out.duplicate = again;
+      return null;
+    }
+    out.saved = {
+      id: nextId(latest),
+      createdAt: new Date().toISOString(),
+      market: input.market,
+      email: input.email,
+      name: input.name,
+      query: input.query,
+      label: input.label,
+      seenSlugs,
+      active: true,
+    };
+    return [...latest, out.saved];
+  });
+  if (out.duplicate) return { saved: out.duplicate, duplicate: true };
+  return { saved: out.saved!, duplicate: false };
 }
 
 export async function listSavedSearches(): Promise<SavedSearch[]> {

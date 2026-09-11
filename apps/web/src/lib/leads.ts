@@ -83,23 +83,26 @@ export async function listLeads(status?: LeadStatus): Promise<Lead[]> {
 export async function createLead(
   input: Omit<Lead, "id" | "createdAt" | "status" | "assignedAgentId" | "assignedAgentName">,
 ): Promise<Lead> {
-  const rows = await store.all();
   const agent = routeToAgent(input.market, {
     locality: input.locality ?? input.valuation?.locality,
     city: input.city ?? input.valuation?.city,
   });
 
-  const lead: Lead = {
-    ...input,
-    id: nextId(rows),
-    createdAt: new Date().toISOString(),
-    status: "new",
-    assignedAgentId: agent.id,
-    assignedAgentName: agent.name,
-  };
-
-  await store.replace([...rows, lead]);
-  return lead;
+  // A customer enquiry must not fail because another write landed first — it
+  // re-reads and recomputes the id instead. An error here is a lost lead.
+  const out: { lead?: Lead } = {};
+  await store.mutate((rows) => {
+    out.lead = {
+      ...input,
+      id: nextId(rows),
+      createdAt: new Date().toISOString(),
+      status: "new",
+      assignedAgentId: agent.id,
+      assignedAgentName: agent.name,
+    };
+    return [...rows, out.lead];
+  });
+  return out.lead!;
 }
 
 export async function setLeadStatus(

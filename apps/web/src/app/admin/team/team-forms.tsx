@@ -242,8 +242,10 @@ export function SetPasswordForm({ users }: { users: User[] }) {
           </select>
         </div>
 
+        {/* Not "password": the New user form on this page already owns that
+            id, and a duplicate sent this label to the wrong input. */}
         <Field
-          name="password"
+          name="newPassword"
           label="New password"
           type="password"
           required
@@ -251,7 +253,7 @@ export function SetPasswordForm({ users }: { users: User[] }) {
           autoComplete="new-password"
         />
         <Field
-          name="confirm"
+          name="newPasswordConfirm"
           label="Confirm"
           type="password"
           required

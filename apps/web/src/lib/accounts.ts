@@ -95,18 +95,29 @@ export async function ensureSeedAdmin(): Promise<User | null> {
   const existing = (await users.all()).find((u) => norm(u.email) === email);
   if (existing) return existing;
 
-  const rows = await users.all();
-  const user: User = {
-    id: "usr_001",
-    email,
-    name: "Super Admin",
-    role: "super_admin",
-    passwordHash: await hashPassword(pass),
-    createdAt: new Date().toISOString(),
-    active: true,
-  };
-  await users.replace([...rows, user]);
-  return user;
+  // Hash once, outside the retry; the existence check runs inside it, so a
+  // second instance seeding at the same moment finds the account instead of
+  // adding a duplicate.
+  const passwordHash = await hashPassword(pass);
+  const out: { user?: User } = {};
+  await users.mutate((rows) => {
+    const found = rows.find((u) => norm(u.email) === email);
+    if (found) {
+      out.user = found;
+      return null;
+    }
+    out.user = {
+      id: "usr_001",
+      email,
+      name: "Super Admin",
+      role: "super_admin",
+      passwordHash,
+      createdAt: new Date().toISOString(),
+      active: true,
+    };
+    return [...rows, out.user];
+  });
+  return out.user ?? null;
 }
 
 /* ---------- users ---------- */
@@ -146,22 +157,30 @@ export async function createUser(input: {
   if (AGENCY_ROLES.includes(input.role) && !input.agencyId)
     return { ok: false, error: "Agency roles must belong to an agency." };
 
-  const rows = await users.all();
-  if (rows.some((u) => norm(u.email) === norm(input.email)))
-    return { ok: false, error: "That email already has an account." };
-
-  const user: User = {
-    id: nextUserId(rows),
-    email: norm(input.email),
-    name: input.name,
-    role: input.role,
-    agencyId: AGENCY_ROLES.includes(input.role) ? input.agencyId : undefined,
-    passwordHash: await hashPassword(input.password),
-    createdAt: new Date().toISOString(),
-    active: true,
-  };
-  await users.replace([...rows, user]);
-  return { ok: true, user };
+  // The duplicate check and the next id are recomputed on every attempt, so a
+  // concurrent write cannot produce two accounts with one email or one id.
+  const passwordHash = await hashPassword(input.password);
+  const out: { user?: User; duplicate?: boolean } = {};
+  await users.mutate((rows) => {
+    if (rows.some((u) => norm(u.email) === norm(input.email))) {
+      out.duplicate = true;
+      return null;
+    }
+    out.duplicate = false;
+    out.user = {
+      id: nextUserId(rows),
+      email: norm(input.email),
+      name: input.name,
+      role: input.role,
+      agencyId: AGENCY_ROLES.includes(input.role) ? input.agencyId : undefined,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+      active: true,
+    };
+    return [...rows, out.user];
+  });
+  if (out.duplicate || !out.user) return { ok: false, error: "That email already has an account." };
+  return { ok: true, user: out.user };
 }
 
 export async function setUserActive(id: string, active: boolean) {
@@ -224,19 +243,21 @@ export async function createAgency(input: {
   phone?: string;
   email?: string;
 }): Promise<Agency> {
-  const rows = await agencies.all();
-  const agency: Agency = {
-    id: nextAgencyId(rows),
-    name: input.name,
-    market: input.market,
-    tier: input.tier,
-    createdAt: new Date().toISOString(),
-    active: true,
-    phone: input.phone,
-    email: input.email,
-  };
-  await agencies.replace([...rows, agency]);
-  return agency;
+  const out: { agency?: Agency } = {};
+  await agencies.mutate((rows) => {
+    out.agency = {
+      id: nextAgencyId(rows),
+      name: input.name,
+      market: input.market,
+      tier: input.tier,
+      createdAt: new Date().toISOString(),
+      active: true,
+      phone: input.phone,
+      email: input.email,
+    };
+    return [...rows, out.agency];
+  });
+  return out.agency!;
 }
 
 export async function setAgencyTier(id: string, tier: SubscriptionTier) {
