@@ -142,31 +142,45 @@ async function Queue() {
         <section className="mt-12">
           <h2 className="label">Decided</h2>
           <ul className="mt-4 flex flex-col gap-px bg-line">
+            {/* Decided rows open the same review page as pending ones. A
+                decision is not the end of the record: this is where you go to
+                re-read the documents, correct a detail, or see why something
+                was returned. */}
             {decided.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-4 bg-paper p-5">
-                <span className="label w-16 shrink-0">{s.listing.market.toUpperCase()}</span>
-                <span className="min-w-[240px] flex-1 text-sm">{s.listing.title}</span>
-                {s.listing.complianceOverride && (
+              <li key={s.id}>
+                <Link
+                  href={`/admin/${s.id}`}
+                  className="flex flex-wrap items-center gap-4 bg-paper p-5 transition-colors hover:bg-surface"
+                >
+                  <span className="label w-16 shrink-0">{s.listing.market.toUpperCase()}</span>
+                  <span className="min-w-[240px] flex-1">
+                    <span className="block text-sm">{s.listing.title}</span>
+                    <span className="label mt-1 block !normal-case !tracking-normal">
+                      {s.listing.location.locality}, {s.listing.location.city} · {s.submitterName}
+                    </span>
+                  </span>
+                  {s.listing.complianceOverride && (
+                    <span
+                      className="label border px-2 py-1"
+                      style={{
+                        color: "var(--color-signal)",
+                        borderColor: "color-mix(in srgb, var(--color-signal) 40%, transparent)",
+                        background: "var(--color-signal-wash)",
+                      }}
+                    >
+                      Override
+                    </span>
+                  )}
                   <span
-                    className="label border px-2 py-1"
+                    className="label"
                     style={{
-                      color: "var(--color-signal)",
-                      borderColor: "color-mix(in srgb, var(--color-signal) 40%, transparent)",
-                      background: "var(--color-signal-wash)",
+                      color:
+                        s.status === "approved" ? "var(--color-brass)" : "var(--color-ink-faint)",
                     }}
                   >
-                    Override
+                    {s.status === "approved" ? "Published" : "Returned"}
                   </span>
-                )}
-                <span
-                  className="label"
-                  style={{
-                    color:
-                      s.status === "approved" ? "var(--color-brass)" : "var(--color-ink-faint)",
-                  }}
-                >
-                  {s.status === "approved" ? "Published" : "Returned"}
-                </span>
+                </Link>
               </li>
             ))}
           </ul>
