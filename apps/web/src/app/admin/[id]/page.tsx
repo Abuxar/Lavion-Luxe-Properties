@@ -30,6 +30,10 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
   const blocked = !sub.gates.canPublish;
   const documents = sub.documents ?? [];
   const pendingDocuments = documents.filter((d) => d.status === "pending").length;
+  // The advert's own photographs, in the order the public gallery will show
+  // them — sorted here because the store keeps submission order, not display
+  // order.
+  const photos = [...(l.media ?? [])].sort((a, b) => a.order - b.order);
   const decided = sub.status !== "pending_review";
   const ov = sub.listing.complianceOverride;
 
@@ -74,6 +78,71 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
 
           <h2 className="label mt-10">Description</h2>
           <p className="mt-3 max-w-[65ch] leading-relaxed text-ink-soft">{l.description}</p>
+
+          {/* The advert's photographs. Public by design — these are the same
+              files the listing page serves — so they are shown directly from
+              storage rather than through the staff-gated document route.
+              Deliberately plain <img>: thumbnails on an internal page are not
+              worth spending the account's image-optimisation quota on. */}
+          <h2 className="label mt-10" id="photos">
+            Property photos
+          </h2>
+          {photos.length === 0 ? (
+            <p className="mt-3 max-w-[60ch] text-sm text-ink-soft">
+              None attached. A listing with no photographs will publish, but it
+              will sit near the bottom of every search — worth asking the
+              submitter for images before approving.
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 max-w-[62ch] text-sm text-ink-soft">
+                {photos.length} {photos.length === 1 ? "image" : "images"}, in the
+                order the listing gallery will show them. The first is the cover.
+              </p>
+              <ul className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {photos.map((p, i) => (
+                  <li key={`${p.cloudinaryId}-${i}`} className="border border-line bg-surface">
+                    <a
+                      href={p.cloudinaryId}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                      title="Open full size"
+                    >
+                      {p.type === "video" || p.type === "tour" ? (
+                        <div className="flex aspect-[4/3] items-center justify-center bg-surface-2 p-4 text-center">
+                          <span className="label">
+                            {p.type === "video" ? "Video" : "Virtual tour"}
+                            <br />
+                            Open &rarr;
+                          </span>
+                        </div>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.cloudinaryId}
+                          alt={p.alt ?? `${l.title} — photo ${i + 1}`}
+                          loading="lazy"
+                          className="aspect-[4/3] w-full bg-surface-2 object-cover"
+                        />
+                      )}
+                    </a>
+                    <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
+                      <span className="label tnum">
+                        {i === 0 ? "Cover" : `#${i + 1}`}
+                        {p.type !== "image" && ` · ${p.type}`}
+                      </span>
+                      {p.alt && (
+                        <span className="min-w-0 truncate text-xs text-ink-faint" title={p.alt}>
+                          {p.alt}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <h2 className="label mt-10">Declared compliance</h2>
           <ComplianceDump compliance={l.compliance} market={m} />

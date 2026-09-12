@@ -23,6 +23,8 @@ import Image from "next/image";
 const MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.82;
 const MAX_FILES = 20;
+/** Largest image allowed to travel inline when the store is unreachable. */
+const INLINE_FALLBACK_LIMIT = 120_000;
 
 export interface UploadedImage {
   url: string;
@@ -124,8 +126,23 @@ export function ImageUploader({
               contentType: shrunk.type || file.type,
             });
             url = blob.url;
-          } catch {
-            // Blob unavailable (not configured, offline) — keep the form usable.
+          } catch (uploadError) {
+            // Blob unavailable (not configured, offline). A small image can
+            // still travel inline so the form stays usable, but only a small
+            // one: every inline image is stored verbatim inside the submission
+            // record, which is versioned and kept, so a few full-size photos
+            // would bloat the queue far more than they help.
+            //
+            // Anything larger fails loudly. This path used to swallow every
+            // error, which is how a Content-Security-Policy block went
+            // unnoticed and listings were published with no photographs.
+            if (shrunk.size > INLINE_FALLBACK_LIMIT) {
+              throw new Error(
+                uploadError instanceof Error && /content security policy/i.test(uploadError.message)
+                  ? "Upload was blocked by the browser. Please tell us — this is our bug, not yours."
+                  : "Could not upload that photo. Check your connection and try again.",
+              );
+            }
             url = await readAsDataUrl(shrunk);
           }
 

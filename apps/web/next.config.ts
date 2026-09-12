@@ -16,6 +16,16 @@ import type { NextConfig } from "next";
  * there is a reason to pay for it, not as a box already ticked.
  */
 const BLOB_HOST = "https://*.public.blob.vercel-storage.com";
+/**
+ * Client uploads do not talk to the blob host directly. @vercel/blob's browser
+ * `upload()` posts the file to the Blob API — `defaultVercelBlobApiUrl` in the
+ * SDK, i.e. https://vercel.com/api/blob — using the short-lived token our
+ * /api/upload route hands out, and only the resulting public URL lives on
+ * BLOB_HOST. Leaving this out of connect-src silently broke every photo
+ * upload: the browser refused the request, the uploader fell back, and the
+ * listing was stored with no photographs at all.
+ */
+const BLOB_API = "https://vercel.com";
 const CLOUDINARY = "https://res.cloudinary.com";
 
 const CSP = [
@@ -31,8 +41,9 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   // Dev needs eval for React Refresh; production must not have it.
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
-  // Photos upload straight from the browser to Blob storage.
-  `connect-src 'self' ${BLOB_HOST}`,
+  // Photos upload straight from the browser to Blob storage, by way of the
+  // Blob API that issues and redeems the client token.
+  `connect-src 'self' ${BLOB_API} ${BLOB_HOST}`,
   "worker-src 'self' blob:",
   "upgrade-insecure-requests",
 ].join("; ");

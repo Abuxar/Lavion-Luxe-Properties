@@ -40,7 +40,7 @@ export function ListingCard({
           className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/25 to-transparent"
         />
         <Image
-          src={listing.media[0]?.cloudinaryId ?? "lavion/samples/placeholder"}
+          src={listing.media[0]?.cloudinaryId ?? "/samples/placeholder.svg"}
           alt={listing.media[0]?.alt ?? listing.title}
           fill
           priority={priority}
