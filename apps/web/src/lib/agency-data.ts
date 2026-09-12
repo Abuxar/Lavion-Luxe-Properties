@@ -19,7 +19,13 @@ import { listSubmissions, type SubmissionWithGates } from "./submissions";
 export async function agencyListings(agencyId: string | undefined): Promise<SubmissionWithGates[]> {
   if (!agencyId) return [];
   const all = await listSubmissions();
-  return all.filter((s) => s.listing.ownerAgencyId === agencyId);
+  return all
+    .filter((s) => s.listing.ownerAgencyId === agencyId)
+    // Seller documents are staff-only. Stripped here rather than merely left
+    // unrendered: this is the one function agency pages read through, and a
+    // component that later passes a submission to the client would otherwise
+    // ship the paperwork with it.
+    .map(({ documents: _documents, ...rest }) => rest);
 }
 
 export async function agencyLeads(agencyId: string | undefined): Promise<Lead[]> {

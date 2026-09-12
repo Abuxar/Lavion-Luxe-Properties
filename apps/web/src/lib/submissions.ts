@@ -1,6 +1,11 @@
 import "server-only";
 import { VersionConflict, loadAll, saveAll } from "./submission-store";
-import type { Submission, SubmissionStatus } from "./submissions-types";
+import type {
+  DocumentStatus,
+  Submission,
+  SubmissionDocument,
+  SubmissionStatus,
+} from "./submissions-types";
 import type { Promotion } from "@lavion/schema";
 import {
   evaluatePublishGates,
@@ -290,6 +295,8 @@ async function createSubmissionOnce(input: {
   submitterName: string;
   submitterEmail: string;
   listing: ListingInput;
+  /** Ownership paperwork, already stored encrypted. Staff-only from here on. */
+  documents?: SubmissionDocument[];
 }): Promise<SubmissionWithGates> {
   const all = await read();
   const submission: Submission = {
@@ -300,6 +307,7 @@ async function createSubmissionOnce(input: {
     // Nothing self-publishes. Everything lands in review.
     status: "pending_review",
     listing: { ...input.listing, source: "self_submitted", status: "pending_review" },
+    ...(input.documents?.length ? { documents: input.documents } : {}),
   };
   await write(all, [...all, submission]);
   return withGates(submission);
@@ -313,13 +321,24 @@ async function createSubmissionOnce(input: {
 export async function approveSubmission(
   id: string,
   override?: { by: string; reason: string },
-): Promise<{ ok: true; submission: SubmissionWithGates } | { ok: false; gates: GateResult }> {
+): Promise<
+  | { ok: true; submission: SubmissionWithGates }
+  | { ok: false; gates: GateResult; pendingDocuments: number }
+> {
   const all = await read();
   const s = all.find((x) => x.id === id);
   if (!s) throw new Error("submission not found");
 
   const gates = evaluatePublishGates(s.listing);
-  if (!gates.canPublish && !override) return { ok: false, gates };
+
+  // Documents the admin has not looked at yet block publication, and the
+  // compliance override cannot wave them through: an override records a
+  // decision someone took, and "not checked yet" is not one. A rejected
+  // document does not block — that IS a decision.
+  const pendingDocuments = (s.documents ?? []).filter((d) => d.status === "pending").length;
+  if (pendingDocuments) return { ok: false, gates, pendingDocuments };
+
+  if (!gates.canPublish && !override) return { ok: false, gates, pendingDocuments: 0 };
 
   const bypassed = gates.failures
     .filter((f) => f.severity === "blocking")
@@ -413,6 +432,44 @@ export async function updateSubmissionListing(
   };
   await write(all, all.map((x) => (x.id === id ? updated : x)));
   return { ok: true, submission: withGates(updated) };
+}
+
+/**
+ * Record the admin's decision on one document.
+ *
+ * Verifying is a human act — someone opened the deed and read it — so the
+ * decision carries who made it and when, the same way a compliance override
+ * does. Nothing here touches the listing: documents never reach the public
+ * site.
+ */
+export async function setDocumentStatus(
+  id: string,
+  docId: string,
+  status: DocumentStatus,
+  by: string,
+  note?: string,
+): Promise<SubmissionWithGates | null> {
+  const all = await read();
+  const s = all.find((x) => x.id === id);
+  if (!s?.documents?.some((d) => d.id === docId)) return null;
+
+  const updated: Submission = {
+    ...s,
+    documents: s.documents.map((d) =>
+      d.id === docId
+        ? {
+            ...d,
+            status,
+            note: note?.trim() || undefined,
+            checkedBy: by,
+            checkedAt: new Date().toISOString(),
+          }
+        : d,
+    ),
+  };
+
+  await write(all, all.map((x) => (x.id === id ? updated : x)));
+  return withGates(updated);
 }
 
 export async function rejectSubmission(id: string, note: string): Promise<SubmissionWithGates> {

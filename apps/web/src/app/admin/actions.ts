@@ -2,13 +2,15 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { evaluatePublishGates } from "@lavion/schema";
-import { isAdmin, signIn, signOut } from "@/lib/admin-auth";
+import { currentSession, isAdmin, signIn, signOut } from "@/lib/admin-auth";
+import { parseDocumentField } from "@/lib/documents";
 import {
   approveSubmission,
   createAdminListing,
   createSubmission,
   getSubmission,
   rejectSubmission,
+  setDocumentStatus,
   updateSubmissionListing,
 } from "@/lib/submissions";
 import { buildListingFromForm } from "./form-mapper";
@@ -75,6 +77,12 @@ export async function approveAction(
   // The gate is re-checked server-side on approval, so a crafted request
   // cannot publish a listing the UI would have refused.
   if (!result.ok) {
+    if (result.pendingDocuments) {
+      return {
+        status: "error",
+        message: `Check the seller's ${result.pendingDocuments === 1 ? "document" : `${result.pendingDocuments} documents`} first — verify or reject each one below.`,
+      };
+    }
     return {
       status: "blocked",
       message: "This listing cannot be published yet.",
@@ -134,6 +142,9 @@ export async function submitPropertyAction(
     submitterName: String(formData.get("submitterName") ?? "Unknown"),
     submitterEmail: String(formData.get("submitterEmail") ?? ""),
     listing: built.listing,
+    // Rebuilt from the posted field rather than trusted: a document can only
+    // arrive as "pending", whatever the browser sent.
+    documents: parseDocumentField(formData.get("documents") as string | null),
   });
 
   // Tell the submitter now what will hold the listing in review, rather than
@@ -254,5 +265,38 @@ export async function updateSubmissionAction(
     message: blocking
       ? `Saved. ${blocking} disclosure ${blocking === 1 ? "item still blocks" : "items still block"} publishing — see the review page.`
       : "Saved. It now clears the publish gate — approve it from the review page.",
+  };
+}
+
+/* ---------- seller documents ---------- */
+
+export async function verifyDocumentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await isAdmin())) return { status: "error", message: "Not permitted." };
+
+  const id = String(formData.get("id") ?? "");
+  const docId = String(formData.get("docId") ?? "");
+  const raw = String(formData.get("status") ?? "");
+  const note = String(formData.get("note") ?? "");
+
+  if (raw !== "verified" && raw !== "rejected") {
+    return { status: "error", message: "Choose verify or reject." };
+  }
+  if (raw === "rejected" && note.trim().length < 4) {
+    return { status: "error", message: "Say what is wrong with it — the seller is told." };
+  }
+
+  // Recorded against the person who looked, not a generic "admin".
+  const session = await currentSession();
+  const updated = await setDocumentStatus(id, docId, raw, session?.email ?? "admin", note);
+  if (!updated) return { status: "error", message: "That document is no longer attached." };
+
+  revalidatePath(`/admin/${id}`);
+  revalidatePath("/admin");
+  return {
+    status: "ok",
+    message: raw === "verified" ? "Marked as verified." : "Marked as rejected.",
   };
 }

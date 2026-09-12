@@ -7,7 +7,7 @@ import { isAdmin, isConfigured } from "@/lib/admin-auth";
 import { formatArea, formatPrice } from "@/lib/format";
 import { getSubmission } from "@/lib/submissions";
 import { SignInForm } from "../sign-in-form";
-import { ApproveButton, RejectForm } from "./review-actions";
+import { ApproveButton, DocumentDecision, RejectForm } from "./review-actions";
 import { TRANSACTION_LABEL } from "@lavion/schema";
 
 export default function ReviewPage({ params }: PageProps<"/admin/[id]">) {
@@ -28,6 +28,8 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
   const l = sub.listing;
   const m = l.market as Market;
   const blocked = !sub.gates.canPublish;
+  const documents = sub.documents ?? [];
+  const pendingDocuments = documents.filter((d) => d.status === "pending").length;
   const decided = sub.status !== "pending_review";
   const ov = sub.listing.complianceOverride;
 
@@ -75,6 +77,72 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
 
           <h2 className="label mt-10">Declared compliance</h2>
           <ComplianceDump compliance={l.compliance} market={m} />
+
+          {/* Seller documents. Staff only: the files are encrypted in storage
+              and streamed by an admin-gated route, never linked publicly. */}
+          <h2 className="label mt-10" id="documents">
+            Ownership documents
+          </h2>
+          {documents.length === 0 ? (
+            <p className="mt-3 max-w-[60ch] text-sm text-ink-soft">
+              None attached. Ask the submitter for the title deed or transfer
+              letter before publishing if the market needs it.
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 max-w-[62ch] text-sm text-ink-soft">
+                Visible to staff only. Each one needs a decision before this
+                listing can be published — a rejection is sent to the submitter.
+              </p>
+              <ul className="mt-5 flex flex-col gap-5">
+                {documents.map((d) => (
+                  <li key={d.id} className="border border-line bg-surface">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line p-4">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.name}</span>
+                      <span className="label tnum">{readableSize(d.size)}</span>
+                      <DocumentBadge status={d.status} />
+                    </div>
+
+                    <div className="bg-surface-2">
+                      {d.type === "application/pdf" ? (
+                        <iframe
+                          src={`/api/admin/documents/${sub.id}/${d.id}`}
+                          title={d.name}
+                          className="h-[520px] w-full border-0"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/admin/documents/${sub.id}/${d.id}`}
+                          alt={d.name}
+                          className="max-h-[520px] w-full bg-paper object-contain"
+                        />
+                      )}
+                    </div>
+
+                    <div className="p-4">
+                      <a
+                        href={`/api/admin/documents/${sub.id}/${d.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="label hover:text-brass"
+                      >
+                        Open full size &rarr;
+                      </a>
+                      {d.checkedBy && d.checkedAt && (
+                        <p className="mt-2 text-xs text-ink-faint">
+                          {d.status === "verified" ? "Verified" : "Rejected"} by {d.checkedBy} on{" "}
+                          {d.checkedAt.slice(0, 10)}
+                          {d.note ? ` — ${d.note}` : ""}
+                        </p>
+                      )}
+                      {!decided && <DocumentDecision id={sub.id} docId={d.id} status={d.status} />}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         <aside className="flex flex-col gap-6 lg:sticky lg:top-8 lg:self-start">
@@ -125,7 +193,7 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
               >
                 Edit details
               </Link>
-              <ApproveButton id={sub.id} blocked={blocked} />
+              <ApproveButton id={sub.id} blocked={blocked} pendingDocuments={pendingDocuments} />
               <div className="border-t border-line pt-6">
                 <RejectForm id={sub.id} />
               </div>
@@ -176,5 +244,29 @@ function ComplianceDump({
         />
       ))}
     </dl>
+  );
+}
+
+function readableSize(bytes: number): string {
+  if (!bytes) return "—";
+  return bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function DocumentBadge({ status }: { status: "pending" | "verified" | "rejected" }) {
+  const tone =
+    status === "verified"
+      ? "var(--color-brass)"
+      : status === "rejected"
+        ? "var(--color-signal)"
+        : "var(--color-ink-faint)";
+  return (
+    <span
+      className="label border px-2 py-1"
+      style={{ color: tone, borderColor: `color-mix(in srgb, ${tone} 45%, transparent)` }}
+    >
+      {status === "verified" ? "Verified" : status === "rejected" ? "Rejected" : "Not checked"}
+    </span>
   );
 }

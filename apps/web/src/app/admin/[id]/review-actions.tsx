@@ -1,13 +1,39 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { approveAction, rejectAction, type ActionState } from "../actions";
+import { approveAction, rejectAction, verifyDocumentAction, type ActionState } from "../actions";
 
 const initial: ActionState = { status: "idle" };
 
-export function ApproveButton({ id, blocked }: { id: string; blocked: boolean }) {
+export function ApproveButton({
+  id,
+  blocked,
+  pendingDocuments = 0,
+}: {
+  id: string;
+  blocked: boolean;
+  /** Documents the admin has not decided on yet. Not overridable. */
+  pendingDocuments?: number;
+}) {
   const [state, action, pending] = useActionState(approveAction, initial);
   const [overriding, setOverriding] = useState(false);
+
+  // Unchecked paperwork stops publication outright: an override records a
+  // decision, and not having looked yet is not one.
+  if (pendingDocuments > 0) {
+    return (
+      <div className="border border-line bg-surface p-5">
+        <p className="label">Waiting on your check</p>
+        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+          {pendingDocuments === 1
+            ? "One document is still unchecked."
+            : `${pendingDocuments} documents are still unchecked.`}{" "}
+          Open each one under Ownership documents and verify or reject it, then
+          publish from here.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form action={action} className="flex flex-col gap-3">
@@ -151,5 +177,91 @@ function Msg({ tone, children }: { tone: "ok" | "bad"; children: React.ReactNode
     >
       {children}
     </p>
+  );
+}
+
+/**
+ * Verify or reject one document.
+ *
+ * Rejecting needs a reason, because it goes back to the seller as the thing
+ * they have to fix. Verifying does not — the record already carries who
+ * checked it and when.
+ */
+export function DocumentDecision({
+  id,
+  docId,
+  status,
+}: {
+  id: string;
+  docId: string;
+  status: "pending" | "verified" | "rejected";
+}) {
+  const [state, action, pending] = useActionState(verifyDocumentAction, initial);
+  const [rejecting, setRejecting] = useState(false);
+
+  return (
+    <form action={action} className="mt-3 flex flex-col gap-3">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="docId" value={docId} />
+
+      {!rejecting && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            name="status"
+            value="verified"
+            disabled={pending}
+            className="label border border-line px-4 py-2 transition-colors hover:border-brass disabled:opacity-50"
+          >
+            {status === "verified" ? "Verified ✓" : "Mark verified"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setRejecting(true)}
+            className="label border border-line px-4 py-2 transition-colors hover:border-signal"
+          >
+            {status === "rejected" ? "Rejected — change reason" : "Reject"}
+          </button>
+        </div>
+      )}
+
+      {rejecting && (
+        <div className="border border-signal/40 bg-signal-wash p-4">
+          <label htmlFor={`dn-${docId}`} className="label block">
+            What is wrong with it — the seller is told
+          </label>
+          <input
+            id={`dn-${docId}`}
+            name="note"
+            required
+            minLength={4}
+            placeholder="e.g. The transfer letter is unsigned."
+            className="mt-2 w-full border border-line bg-paper px-3 py-2.5 text-sm outline-none focus-visible:border-signal"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              name="status"
+              value="rejected"
+              disabled={pending}
+              className="px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--color-signal)" }}
+            >
+              {pending ? "Saving…" : "Reject document"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRejecting(false)}
+              className="label border border-line px-4 py-2.5 transition-colors hover:border-brass"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {state.status === "ok" && <Msg tone="ok">{state.message}</Msg>}
+      {state.status === "error" && <Msg tone="bad">{state.message}</Msg>}
+    </form>
   );
 }

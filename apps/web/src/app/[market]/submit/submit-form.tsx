@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import type { Market } from "@lavion/schema";
 import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
+import { DocumentUploader, type UploadedDocument } from "@/components/document-uploader";
 import { submitPropertyAction, type ActionState } from "@/app/admin/actions";
 
 const initial: ActionState = { status: "idle" };
@@ -22,6 +23,7 @@ export function SubmitForm({ market }: { market: Market }) {
   const [offPlan, setOffPlan] = useState(false);
   const [tenure, setTenure] = useState("freehold");
   const [images, setImages] = useState<UploadedImage[]>([]);
+  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
 
   const issues = state.status === "error" ? (state.fieldIssues ?? {}) : {};
 
@@ -122,6 +124,13 @@ export function SubmitForm({ market }: { market: Market }) {
         note="Add photos straight from this device — on a phone the picker offers your camera, photo library and files. Listings with photos get far more enquiries."
       >
         <ImageUploader value={images} onChange={setImages} name="media" />
+      </Section>
+
+      <Section
+        title="Ownership documents"
+        note="Optional, but a listing with papers attached clears review faster. Our team checks them; they are encrypted in storage and never appear on the public listing."
+      >
+        <DocumentUploader value={documents} onChange={setDocuments} name="documents" />
       </Section>
 
       {/* Market-specific requirements, surfaced with WHY they are needed. */}

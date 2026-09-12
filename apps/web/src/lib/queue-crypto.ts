@@ -122,3 +122,53 @@ export function open<T>(raw: string): T {
   }
   throw new Error("queue document did not decrypt with any configured key — refusing to read it as empty");
 }
+
+/* ---------- binary payloads: seller documents ---------- */
+
+/** Envelope prefix for binary blobs. Four bytes, then iv, tag, ciphertext. */
+const B1 = Buffer.from("LLB1");
+const IV = 12;
+const TAG = 16;
+
+/**
+ * Encrypt a file for storage.
+ *
+ * Seller documents — title deeds, NOCs, identity papers — go into the same
+ * PUBLIC Blob store as the listing photos, where any URL is readable by
+ * anyone. They are stored encrypted so that a leaked or guessed URL yields
+ * bytes nobody can open, and are served only through the admin route that
+ * decrypts them behind a staff session.
+ *
+ * Throws when no key is configured: a document written in the clear would be
+ * a silent, permanent exposure, unlike a queue document that can be rewritten.
+ */
+export function sealBytes(data: Uint8Array): Buffer {
+  const k = keys()[0];
+  if (!k) throw new Error("no encryption key configured — refusing to store a document unencrypted");
+
+  const iv = randomBytes(IV);
+  const cipher = createCipheriv("aes-256-gcm", k, iv);
+  const body = Buffer.concat([cipher.update(data), cipher.final()]);
+  return Buffer.concat([B1, iv, cipher.getAuthTag(), body]);
+}
+
+/** Decrypt a stored file, trying every configured key. */
+export function openBytes(raw: Uint8Array): Buffer {
+  const buf = Buffer.from(raw);
+  if (!buf.subarray(0, B1.length).equals(B1)) throw new Error("not an encrypted document");
+
+  const iv = buf.subarray(B1.length, B1.length + IV);
+  const tag = buf.subarray(B1.length + IV, B1.length + IV + TAG);
+  const body = buf.subarray(B1.length + IV + TAG);
+
+  for (const k of keys()) {
+    try {
+      const d = createDecipheriv("aes-256-gcm", k, iv);
+      d.setAuthTag(tag);
+      return Buffer.concat([d.update(body), d.final()]);
+    } catch {
+      // Not this key — try the next.
+    }
+  }
+  throw new Error("document did not decrypt with any configured key");
+}
