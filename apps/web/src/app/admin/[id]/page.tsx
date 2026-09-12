@@ -49,8 +49,15 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
             {m.toUpperCase()} · {TRANSACTION_LABEL[l.transaction]}
             {l.offPlan && " · Off-plan"}
           </p>
-          <h1 className="mt-3 max-w-[30ch] font-display text-3xl leading-tight">{l.title}</h1>
-          <p className="mt-2 text-sm text-ink-soft">
+          {/* Submitted text is whatever the seller typed. A run with no spaces
+              has a min-content width as wide as the run itself, which pushes
+              the grid column out and scrolls the whole page sideways —
+              wrap-anywhere lets it break, and fixes the intrinsic width that
+              break-words alone would leave. */}
+          <h1 className="mt-3 max-w-[30ch] font-display text-3xl leading-tight wrap-anywhere">
+            {l.title}
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft wrap-anywhere">
             {l.location.locality}, {l.location.city}
           </p>
         </div>
@@ -63,7 +70,7 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
       </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
-        <div>
+        <div className="min-w-0">
           <h2 className="label">Submission</h2>
           <dl className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
             <Row k="Submitted by" v={sub.submitterName} />
@@ -77,7 +84,7 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
           </dl>
 
           <h2 className="label mt-10">Description</h2>
-          <p className="mt-3 max-w-[65ch] leading-relaxed text-ink-soft">{l.description}</p>
+          <p className="mt-3 max-w-[65ch] leading-relaxed text-ink-soft wrap-anywhere">{l.description}</p>
 
           {/* The advert's photographs. Public by design — these are the same
               files the listing page serves — so they are shown directly from
@@ -292,7 +299,7 @@ function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-line pb-2">
       <dt className="text-sm text-ink-faint">{k}</dt>
-      <dd className="text-sm font-medium capitalize">{v}</dd>
+      <dd className="text-sm font-medium capitalize wrap-anywhere">{v}</dd>
     </div>
   );
 }

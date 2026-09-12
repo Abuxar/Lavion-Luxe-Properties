@@ -106,11 +106,11 @@ export function ListingCard({
           )}
         </div>
 
-        <h3 className="font-sans text-[15px] font-medium leading-snug text-ink">
+        <h3 className="font-sans text-[15px] font-medium leading-snug text-ink wrap-anywhere">
           {listing.title}
         </h3>
 
-        <p className="label !normal-case !tracking-normal !text-[13px] font-sans text-ink-soft">
+        <p className="label !normal-case !tracking-normal !text-[13px] font-sans text-ink-soft wrap-anywhere">
           {listing.location.locality}, {listing.location.city}
         </p>
 

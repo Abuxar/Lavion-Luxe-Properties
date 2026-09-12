@@ -43,7 +43,9 @@ async function Queue() {
           <p className="label">Admin</p>
           <h1 className="mt-3 font-display text-4xl">Review queue</h1>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Seven controls do not fit a phone in one row; without wrapping they
+            pushed the queue sideways. */}
+        <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/admin/team"
           className="label border border-line px-4 py-2 transition-colors hover:border-brass"
@@ -114,8 +116,8 @@ async function Queue() {
                 >
                   <span className="label w-16 shrink-0">{s.listing.market.toUpperCase()}</span>
 
-                  <span className="min-w-[240px] flex-1">
-                    <span className="block text-sm font-medium">{s.listing.title}</span>
+                  <span className="min-w-0 flex-1 basis-[240px]">
+                    <span className="block text-sm font-medium wrap-anywhere">{s.listing.title}</span>
                     <span className="label mt-1 block !normal-case !tracking-normal">
                       {s.listing.location.locality}, {s.listing.location.city} · {s.submitterName}
                     </span>
@@ -153,8 +155,8 @@ async function Queue() {
                   className="flex flex-wrap items-center gap-4 bg-paper p-5 transition-colors hover:bg-surface"
                 >
                   <span className="label w-16 shrink-0">{s.listing.market.toUpperCase()}</span>
-                  <span className="min-w-[240px] flex-1">
-                    <span className="block text-sm">{s.listing.title}</span>
+                  <span className="min-w-0 flex-1 basis-[240px]">
+                    <span className="block text-sm wrap-anywhere">{s.listing.title}</span>
                     <span className="label mt-1 block !normal-case !tracking-normal">
                       {s.listing.location.locality}, {s.listing.location.city} · {s.submitterName}
                     </span>

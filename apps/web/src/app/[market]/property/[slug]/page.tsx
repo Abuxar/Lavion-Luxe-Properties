@@ -133,10 +133,13 @@ export default async function PropertyPage({
               {listing.category} · {TRANSACTION_LABEL[listing.transaction]}
               {listing.offPlan && " · Off-plan"}
             </p>
-            <h1 className="mt-4 font-display text-[clamp(1.9rem,4vw,3rem)] leading-[1.1]">
+            {/* A seller can type a title with no spaces in it; wrap-anywhere keeps
+                that from setting the column's min-content width and scrolling
+                the page sideways. */}
+            <h1 className="mt-4 font-display text-[clamp(1.9rem,4vw,3rem)] leading-[1.1] wrap-anywhere">
               {listing.title}
             </h1>
-            <p className="mt-3 text-ink-soft">
+            <p className="mt-3 text-ink-soft wrap-anywhere">
               {listing.location.locality}, {listing.location.city}
             </p>
 
@@ -149,7 +152,7 @@ export default async function PropertyPage({
               <Stat k="Tenure" v={listing.tenure ?? "—"} />
             </dl>
 
-            <div className="mt-10 max-w-[65ch] leading-relaxed text-ink-soft">
+            <div className="mt-10 max-w-[65ch] leading-relaxed text-ink-soft wrap-anywhere">
               {listing.description.split("\n").map((p, i) => (
                 <p key={i} className="mt-4 first:mt-0">
                   {p}
