@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MARKETS, type Market } from "@lavion/schema";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { submitLocations } from "@/lib/gazetteer";
 import { SubmitForm } from "./submit-form";
 
 const VALID: Market[] = ["uk", "ae", "pk"];
@@ -45,7 +46,9 @@ export default async function SubmitPage({ params }: PageProps<"/[market]/submit
         </div>
 
         <div className="mx-auto max-w-[900px] px-6 py-12">
-          <SubmitForm market={m} />
+          {/* Built here, on the server: the form needs the place names, but
+              the gazetteer itself must stay out of the browser bundle. */}
+          <SubmitForm market={m} places={submitLocations()} />
         </div>
       </main>
       <SiteFooter market={m} />

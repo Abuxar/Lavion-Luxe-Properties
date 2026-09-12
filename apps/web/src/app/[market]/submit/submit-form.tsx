@@ -4,6 +4,12 @@ import { useActionState, useState } from "react";
 import type { Market } from "@lavion/schema";
 import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
 import { DocumentUploader, type UploadedDocument } from "@/components/document-uploader";
+import {
+  EMPTY_LOCATION,
+  LocationPicker,
+  type LocationValue,
+} from "@/components/location-picker";
+import type { SubmitMarket } from "@/lib/gazetteer";
 import { submitPropertyAction, type ActionState } from "@/app/admin/actions";
 
 const initial: ActionState = { status: "idle" };
@@ -18,8 +24,19 @@ const UNITS: Record<Market, { value: string; label: string }[]> = {
   ],
 };
 
-export function SubmitForm({ market }: { market: Market }) {
+export function SubmitForm({
+  market: pageMarket,
+  places,
+}: {
+  market: Market;
+  places: Record<Market, SubmitMarket>;
+}) {
   const [state, action, pending] = useActionState(submitPropertyAction, initial);
+  // The page decides the starting country; the seller decides the real one.
+  // Everything market-specific below follows this, not the URL, so picking
+  // the UAE asks for a DLD permit and prices in AED even from /uk/submit.
+  const [market, setMarket] = useState<Market>(pageMarket);
+  const [place, setPlace] = useState<LocationValue>(EMPTY_LOCATION);
   const [offPlan, setOffPlan] = useState(false);
   const [tenure, setTenure] = useState("freehold");
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -53,11 +70,23 @@ export function SubmitForm({ market }: { market: Market }) {
 
   return (
     <form action={action} className="flex flex-col gap-10">
-      <input type="hidden" name="market" value={market} />
-
       <Section title="About you">
         <Field label="Your name" name="submitterName" required issues={issues} />
         <Field label="Email" name="submitterEmail" type="email" required issues={issues} />
+      </Section>
+
+      <Section
+        title="Where is it?"
+        note="Pick the country first — it sets the currency and the disclosure rules we check the listing against. Choosing from the list keeps your property findable: buyers filter by these exact places."
+      >
+        <LocationPicker
+          market={market}
+          onMarketChange={setMarket}
+          places={places}
+          value={place}
+          onChange={setPlace}
+          issues={issues}
+        />
       </Section>
 
       <Section title="The property">
@@ -104,8 +133,6 @@ export function SubmitForm({ market }: { market: Market }) {
           ]}
         />
 
-        <Field label="Area / locality" name="locality" required issues={issues} />
-        <Field label="City" name="city" required issues={issues} />
 
         <TextArea label="Description" name="description" required issues={issues}
           hint="At least 20 characters." />

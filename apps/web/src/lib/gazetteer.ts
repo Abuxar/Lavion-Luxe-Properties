@@ -651,3 +651,48 @@ export function buildLocationTree(
 
   return { regionLabel: g.regionLabel, regionLabelPlural: g.regionLabelPlural, regions };
 }
+
+/* ---------- places offered on the submit form ---------- */
+
+export interface SubmitCity {
+  name: string;
+  areas: string[];
+}
+export interface SubmitRegion {
+  name: string;
+  cities: SubmitCity[];
+}
+export interface SubmitMarket {
+  /** "Country", "Emirate", "Province" — what this market calls its top level. */
+  regionLabel: string;
+  regions: SubmitRegion[];
+}
+
+/**
+ * The gazetteer as plain names, for the submit form's dropdowns.
+ *
+ * Deliberately not buildLocationTree: that counts live listings, and a seller
+ * picking where their property is should see every place we know, not only the
+ * ones we already have stock in.
+ *
+ * All three markets at once — about 7KB of names — so choosing a different
+ * country re-fills the city list in place instead of navigating away and
+ * throwing out everything already typed into the form.
+ */
+export function submitLocations(): Record<Market, SubmitMarket> {
+  const out = {} as Record<Market, SubmitMarket>;
+  for (const market of Object.keys(GAZETTEER) as Market[]) {
+    const g = GAZETTEER[market];
+    out[market] = {
+      regionLabel: g.regionLabel,
+      regions: g.regions.map((r) => ({
+        name: r.name,
+        cities: r.cities.map((c) => ({
+          name: c.name,
+          areas: c.areas.map((a) => a.name).sort((x, y) => x.localeCompare(y, "en", { numeric: true })),
+        })),
+      })),
+    };
+  }
+  return out;
+}
