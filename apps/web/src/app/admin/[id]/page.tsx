@@ -190,14 +190,28 @@ async function Gate({ params }: { params: PageProps<"/admin/[id]">["params"] }) 
                     </div>
 
                     <div className="p-4">
-                      <a
-                        href={`/api/admin/documents/${sub.id}/${d.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="label hover:text-brass"
-                      >
-                        Open full size &rarr;
-                      </a>
+                      {/* A framed PDF is at the mercy of the browser's viewer,
+                          so opening and saving are offered outright rather
+                          than left to the viewer's own controls. */}
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                        <a
+                          href={`/api/admin/documents/${sub.id}/${d.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="label hover:text-brass"
+                        >
+                          Open in a new tab &rarr;
+                        </a>
+                        <a
+                          href={`/api/admin/documents/${sub.id}/${d.id}?download=1`}
+                          className="label hover:text-brass"
+                        >
+                          Download
+                        </a>
+                        <span className="text-xs text-ink-faint">
+                          {d.type === "application/pdf" ? "PDF" : d.type.replace("image/", "").toUpperCase()}
+                        </span>
+                      </div>
                       {d.checkedBy && d.checkedAt && (
                         <p className="mt-2 text-xs text-ink-faint">
                           {d.status === "verified" ? "Verified" : "Rejected"} by {d.checkedBy} on{" "}

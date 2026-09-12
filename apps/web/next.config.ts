@@ -147,7 +147,35 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/:path*",
+        /**
+         * Seller documents are read inside the review page, in a frame.
+         *
+         * Everything else on this site sends frame-ancestors 'none' and
+         * X-Frame-Options: DENY, and 'none' refuses same-origin framing too —
+         * so the admin's own preview came back as "refused to connect". This
+         * route gets 'self' instead of the site-wide rule, which is why the
+         * catch-all below explicitly skips it: two Content-Security-Policy
+         * headers are enforced as an intersection, so 'none' would win and the
+         * preview would stay blank.
+         *
+         * The response is still a single binary file behind a staff session,
+         * served no-store and nosniff by the handler.
+         */
+        source: "/api/admin/documents/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+        ],
+      },
+      {
+        // Everything but the document route — see the note above.
+        source: "/:path((?!api/admin/documents/).*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

@@ -15,7 +15,7 @@ import { getSubmission } from "@/lib/submissions";
  * 401 respectively, with nothing else said.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: RouteContext<"/api/admin/documents/[id]/[doc]">,
 ): Promise<Response> {
   if (!(await requireStaff())) {
@@ -34,13 +34,18 @@ export async function GET(
     return new Response("That document could not be opened.", { status: 502 });
   }
 
+  // ?download=1 saves the file instead of displaying it. The viewer's own
+  // save button is unreliable across browsers for a framed PDF, so the page
+  // offers an explicit link rather than relying on it.
+  const download = new URL(request.url).searchParams.get("download") === "1";
+
   return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": record.type,
       "Content-Length": String(bytes.length),
       // inline so the admin can read it in the page; the filename is the
       // seller's own, quoted, in case it contains spaces.
-      "Content-Disposition": `inline; filename="${record.name.replace(/"/g, "")}"`,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${record.name.replace(/"/g, "")}"`,
       "Cache-Control": "private, no-store, max-age=0, must-revalidate",
       "X-Robots-Tag": "noindex, nofollow, noarchive",
       "X-Content-Type-Options": "nosniff",
