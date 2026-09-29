@@ -340,7 +340,7 @@ function Select({
       <select
         id={name}
         name={name}
-        className={inputCls}
+        className={`${inputCls} pr-9`}
         {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : {})}
       >
         {options.map((o) => (

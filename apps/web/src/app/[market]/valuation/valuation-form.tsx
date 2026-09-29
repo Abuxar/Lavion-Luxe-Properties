@@ -208,7 +208,7 @@ function S({
       <label htmlFor={name} className="label block">
         {label}
       </label>
-      <select id={name} name={name} className={cls}>
+      <select id={name} name={name} className={`${cls} pr-9`}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

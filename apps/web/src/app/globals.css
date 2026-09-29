@@ -55,6 +55,9 @@
   --color-signal-wash: #f0ded9;
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Native select arrow, restyled — see the select rule in @layer base. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23576260' stroke-width='1.4' stroke-linecap='square'/%3E%3C/svg%3E");
 }
 
 /* dark — same roles, re-tuned. Brass brightens; petrol becomes the ground. */
@@ -78,6 +81,8 @@
 
     --color-signal: #d08476;
     --color-signal-wash: #2b1512;
+
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a8583' stroke-width='1.4' stroke-linecap='square'/%3E%3C/svg%3E");
   }
 }
 
@@ -100,6 +105,8 @@
 
   --color-signal: #d08476;
   --color-signal-wash: #2b1512;
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a8583' stroke-width='1.4' stroke-linecap='square'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -126,6 +133,32 @@
     :root {
       --header-h: 4.25rem; /* measured 68px */
     }
+  }
+
+  /*
+   * Selects, wearing the same clothes as everything else.
+   *
+   * The controls already carried the site's border and background, but the
+   * browser still painted its own rounded corners and arrow over the top, so
+   * the filter bar was the one place on the site that looked unfinished.
+   * appearance:none hands the whole box back to us; the chevron is a token so
+   * it re-colours with the theme rather than staying one fixed grey.
+   *
+   * Right padding lives on the utility side (pr-9 on each control) because
+   * utilities beat @layer base, so setting it here would simply be overridden.
+   */
+  select {
+    appearance: none;
+    border-radius: 0;
+    background-image: var(--select-chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 10px 6px;
+  }
+
+  /* The arrow would otherwise sit on top of a long, truncated option. */
+  select:disabled {
+    background-image: none;
   }
 
   html {

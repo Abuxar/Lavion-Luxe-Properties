@@ -88,7 +88,7 @@ export function AddUserForm({ agencies }: { agencies: Agency[] }) {
             <label htmlFor="agencyId" className="label block">
               Agency
             </label>
-            <select id="agencyId" name="agencyId" className={cls} required>
+            <select id="agencyId" name="agencyId" className={`${cls} pr-9`} required>
               <option value="">Choose an agency…</option>
               {agencies.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -202,7 +202,7 @@ function Select({
       <label htmlFor={name} className="label block">
         {label}
       </label>
-      <select id={name} name={name} className={cls}>
+      <select id={name} name={name} className={`${cls} pr-9`}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -233,7 +233,7 @@ export function SetPasswordForm({ users }: { users: User[] }) {
           <label htmlFor="userId" className="label block">
             Account
           </label>
-          <select id="userId" name="userId" className={cls} required>
+          <select id="userId" name="userId" className={`${cls} pr-9`} required>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name} — {u.email}

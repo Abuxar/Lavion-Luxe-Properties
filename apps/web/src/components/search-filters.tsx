@@ -201,7 +201,7 @@ function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full min-w-0 truncate border border-line bg-paper px-3 py-2 text-sm outline-none focus-visible:border-brass disabled:opacity-50"
+        className="w-full min-w-0 truncate border border-line bg-paper px-3 py-2 pr-9 text-sm outline-none focus-visible:border-brass disabled:opacity-50"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

@@ -245,7 +245,7 @@ function S({ name, label, options, value, onChange }: {
   return (
     <div>
       <label htmlFor={name} className="label block">{label}</label>
-      <select id={name} name={name} className={cls}
+      <select id={name} name={name} className={`${cls} pr-9`}
         {...(onChange ? { value, onChange: (e) => onChange(e.target.value) } : {})}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

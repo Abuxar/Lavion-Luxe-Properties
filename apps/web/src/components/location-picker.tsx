@@ -211,7 +211,7 @@ function Picker({
         required
         // A select sizes to its widest option and will not shrink as a grid
         // item without this, which is what pushed the search filters wide.
-        className="w-full min-w-0 border border-line bg-paper px-4 py-3 text-sm outline-none transition-colors focus:border-brass disabled:opacity-50"
+        className="w-full min-w-0 border border-line bg-paper px-4 py-3 pr-9 text-sm outline-none transition-colors focus:border-brass disabled:opacity-50"
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
