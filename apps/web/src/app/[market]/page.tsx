@@ -7,7 +7,7 @@ import { MotionProvider } from "@/components/motion-provider";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { ListingCard } from "@/components/listing-card";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { getListings } from "@/lib/listings";
+import { getMarketInventory } from "@/lib/listings";
 import { getAreaTaxonomy } from "@/lib/areas";
 import { ScrollCue } from "@/components/scroll-cue";
 import { MarketStats } from "@/components/market-stats";
@@ -241,7 +241,7 @@ async function Inventory({ market }: { market: Market }) {
    * disagreed. connection() is what says "not until someone actually asks".
    */
   await connection();
-  const listings = await getListings(market);
+  const listings = await getMarketInventory(market);
 
   return (
     <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">

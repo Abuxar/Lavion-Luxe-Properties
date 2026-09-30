@@ -278,6 +278,34 @@ export async function getListings(
 }
 
 /**
+ * Inventory for the public market surfaces, cached but never prerendered.
+ *
+ * Separate from getListings for one reason: a "use cache" entry is keyed on
+ * its arguments and shared by every caller, and the area-guide pages call
+ * getListings(market) while being prerendered. So the build filled that entry
+ * with whatever the store returned at build time — nothing, when the build
+ * could not reach it — and the market page then read that empty answer at
+ * request time and listed only the seed properties.
+ *
+ * This one is reached solely from components that have already awaited
+ * connection(), so a prerender cannot call it and cannot seed it. It still
+ * caches per the search profile and still clears on updateTag("listings"),
+ * so publishing a listing shows it immediately without a read per request —
+ * the queue's own in-memory window is only a second wide.
+ */
+export async function getMarketInventory(market: Market): Promise<ListingSummary[]> {
+  "use cache";
+  cacheLife("search");
+  cacheTag("listings");
+
+  const items = [
+    ...(await adminPublished(market)),
+    ...SAMPLE.filter((l) => l.market === market),
+  ];
+  return withPlaces(market, items);
+}
+
+/**
  * Attach each listing's gazetteer place.
  *
  * Once per load, inside the cache, rather than per query in the search

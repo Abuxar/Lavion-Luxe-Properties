@@ -8,7 +8,7 @@ import { ActiveFilters } from "@/components/active-filters";
 import { SearchFilters } from "@/components/search-filters";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { buildLocationTree } from "@/lib/gazetteer";
-import { getListings } from "@/lib/listings";
+import { getMarketInventory } from "@/lib/listings";
 import {
   describeQuery,
   facetsFor,
@@ -88,7 +88,7 @@ async function Results({
   const sp = await searchParams;
   const query = parseQuery(sp);
 
-  const all = await getListings(market);
+  const all = await getMarketInventory(market);
   const facets = facetsFor(all);
   // Only this market's tree reaches the client, counted from live inventory.
   const locations = buildLocationTree(market, all);
