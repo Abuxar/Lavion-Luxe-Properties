@@ -21,7 +21,11 @@ export function MotionProvider({ smoothScroll = true }: { smoothScroll?: boolean
     let lenis: { destroy: () => void; raf: (t: number) => void } | null = null;
     let frame = 0;
     let killed = false;
+    let observer: MutationObserver | null = null;
+    let rescan = 0;
     const triggers: Array<{ kill: () => void }> = [];
+    // Already wired, so a rescan never animates the same element twice.
+    const wired = new WeakSet<Element>();
 
     (async () => {
       const [{ gsap }, { ScrollTrigger }] = await Promise.all([
@@ -49,33 +53,71 @@ export function MotionProvider({ smoothScroll = true }: { smoothScroll?: boolean
         l.on("scroll", ScrollTrigger.update);
       }
 
-      // Staggered reveal, one orchestrated pass rather than scattered effects.
-      const groups = gsap.utils.toArray<HTMLElement>("[data-reveal-group]");
-      for (const group of groups) {
-        const items = group.querySelectorAll("[data-reveal]");
-        const t = gsap.to(items, {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          stagger: 0.08,
-          ease: "expo.out",
-          scrollTrigger: { trigger: group, start: "top 82%", once: true },
-        });
-        if (t.scrollTrigger) triggers.push(t.scrollTrigger);
-      }
+      /*
+       * Staggered reveal, one orchestrated pass rather than scattered effects.
+       *
+       * Run again whenever reveal content is added to the page. .js-motion
+       * hides [data-reveal] at opacity 0 and relies on this to bring it back,
+       * so a section that streams in after the first pass — a Suspense
+       * boundary resolving, which is how the market inventory now arrives —
+       * would otherwise never be wired up and would stay invisible forever.
+       * That is not a missing animation; it is missing content.
+       */
+      const scan = () => {
+        if (killed) return;
 
-      // Loose elements outside a group.
-      const solo = gsap.utils.toArray<HTMLElement>("[data-reveal]:not([data-reveal-group] *)");
-      for (const el of solo) {
-        const t = gsap.to(el, {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          ease: "expo.out",
-          scrollTrigger: { trigger: el, start: "top 88%", once: true },
-        });
-        if (t.scrollTrigger) triggers.push(t.scrollTrigger);
-      }
+        for (const group of gsap.utils.toArray<HTMLElement>("[data-reveal-group]")) {
+          const items = [...group.querySelectorAll<HTMLElement>("[data-reveal]")].filter(
+            (el) => !wired.has(el),
+          );
+          if (!items.length) continue;
+          for (const el of items) wired.add(el);
+          const t = gsap.to(items, {
+            opacity: 1,
+            y: 0,
+            duration: 0.9,
+            stagger: 0.08,
+            ease: "expo.out",
+            scrollTrigger: { trigger: group, start: "top 82%", once: true },
+          });
+          if (t.scrollTrigger) triggers.push(t.scrollTrigger);
+        }
+
+        // Loose elements outside a group.
+        for (const el of gsap.utils.toArray<HTMLElement>(
+          "[data-reveal]:not([data-reveal-group] *)",
+        )) {
+          if (wired.has(el)) continue;
+          wired.add(el);
+          const t = gsap.to(el, {
+            opacity: 1,
+            y: 0,
+            duration: 0.9,
+            ease: "expo.out",
+            scrollTrigger: { trigger: el, start: "top 88%", once: true },
+          });
+          if (t.scrollTrigger) triggers.push(t.scrollTrigger);
+        }
+
+        ScrollTrigger.refresh();
+      };
+
+      scan();
+
+      // Streamed chunks land in bursts, so coalesce rather than scanning per node.
+      observer = new MutationObserver((records) => {
+        for (const r of records) {
+          for (const node of r.addedNodes) {
+            if (!(node instanceof Element)) continue;
+            if (node.matches("[data-reveal], [data-reveal-group]") || node.querySelector("[data-reveal]")) {
+              clearTimeout(rescan);
+              rescan = window.setTimeout(scan, 60);
+              return;
+            }
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
 
       // Hero parallax — the image drifts slower than the page.
       const hero = document.querySelector<HTMLElement>("[data-parallax]");
@@ -88,11 +130,12 @@ export function MotionProvider({ smoothScroll = true }: { smoothScroll?: boolean
         if (t.scrollTrigger) triggers.push(t.scrollTrigger);
       }
 
-      ScrollTrigger.refresh();
     })();
 
     return () => {
       killed = true;
+      observer?.disconnect();
+      clearTimeout(rescan);
       cancelAnimationFrame(frame);
       for (const t of triggers) t.kill();
       lenis?.destroy();

@@ -281,8 +281,16 @@ function InventoryHeading({ market, count }: { market: Market; count?: number })
         </p>
         <h2 className="mt-3 font-display text-4xl">Currently available</h2>
       </div>
-      <Link href={`/${market}/search`} className="label hover:text-brass">
-        Search and filter &rarr;
+      {/* Reads as a control rather than a caption: on a page that now lists
+          everything, filtering is the next thing someone wants. */}
+      <Link
+        href={`/${market}/search`}
+        className="group inline-flex items-center gap-3 border border-line bg-surface px-5 py-3 text-sm font-medium transition-colors hover:border-brass hover:text-brass"
+      >
+        View detailed filters
+        <span aria-hidden className="transition-transform group-hover:translate-x-1">
+          &rarr;
+        </span>
       </Link>
     </div>
   );
