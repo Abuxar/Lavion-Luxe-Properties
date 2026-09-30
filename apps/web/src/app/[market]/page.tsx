@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { MARKETS, type Market } from "@lavion/schema";
 import { MotionProvider } from "@/components/motion-provider";
 import { HeroBackdrop } from "@/components/hero-backdrop";
@@ -64,7 +65,6 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
   if (!VALID.includes(market as Market)) notFound();
   const m = market as Market;
 
-  const listings = await getListings(m, { limit: 6 });
   const copy = HOOK[m];
 
   return (
@@ -130,26 +130,9 @@ export default async function MarketHome({ params }: PageProps<"/[market]">) {
         </Suspense>
 
         {/* ---------- inventory ---------- */}
-        <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
-            <div>
-              <p className="label">Selected inventory</p>
-              <h2 className="mt-3 font-display text-4xl">Currently available</h2>
-            </div>
-            <Link href={`/${m}/search`} className="label hover:text-brass">
-              View all &rarr;
-            </Link>
-          </div>
-
-          <div
-            data-reveal-group
-            className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {listings.map((l, i) => (
-              <ListingCard key={l.slug} listing={l} priority={i < 3} />
-            ))}
-          </div>
-        </section>
+        <Suspense fallback={<InventoryFallback market={m} />}>
+          <Inventory market={m} />
+        </Suspense>
 
         {/* ---------- area guides: entry point to the link mesh ---------- */}
         <Suspense fallback={null}>
@@ -231,5 +214,76 @@ async function AreaLinks({ market }: { market: Market }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Every property in this market — all of them, read per request.
+ *
+ * Streamed rather than prerendered on purpose. Read at the top of the page it
+ * became part of the static shell, so the grid was frozen at whatever the
+ * store returned when the shell was built, while /search read live and
+ * listed more. That is exactly how a market page came to show two properties
+ * while search showed five.
+ *
+ * It also makes the same getListings(market) call search makes. The function
+ * is cached on its arguments, so asking for a limited set here would give this
+ * page a second cache entry that could drift from search's again.
+ */
+async function Inventory({ market }: { market: Market }) {
+  /*
+   * Request time, not build time.
+   *
+   * getListings carries "use cache", which tells Next the call is safe to
+   * prerender — so this grid was being filled while the page was built and
+   * then frozen. Search escaped that only because it reads searchParams, which
+   * forces it dynamic; nothing on this page did the same, which is why the two
+   * disagreed. connection() is what says "not until someone actually asks".
+   */
+  await connection();
+  const listings = await getListings(market);
+
+  return (
+    <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">
+      <InventoryHeading market={market} count={listings.length} />
+
+      <div data-reveal-group className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {listings.map((l, i) => (
+          <ListingCard key={l.slug} listing={l} priority={i < 3} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Holds the section's space while the grid streams, so nothing jumps. */
+function InventoryFallback({ market }: { market: Market }) {
+  return (
+    <section id="inventory" className="mx-auto max-w-[1400px] px-6 py-20">
+      <InventoryHeading market={market} />
+      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="aspect-[4/3] border border-line bg-surface" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function InventoryHeading({ market, count }: { market: Market; count?: number }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
+      <div>
+        <p className="label">
+          {count === undefined
+            ? "Inventory"
+            : `${count} ${count === 1 ? "property" : "properties"}`}
+        </p>
+        <h2 className="mt-3 font-display text-4xl">Currently available</h2>
+      </div>
+      <Link href={`/${market}/search`} className="label hover:text-brass">
+        Search and filter &rarr;
+      </Link>
+    </div>
   );
 }
