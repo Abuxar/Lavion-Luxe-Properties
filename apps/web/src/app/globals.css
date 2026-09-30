@@ -220,6 +220,27 @@
     );
     height: 1px;
   }
+
+  /*
+   * The same rule, for surfaces that stay dark in BOTH themes — the
+   * photographic heroes and the market cards. --color-brass is a dark brown in
+   * the light theme, which is correct on paper and nearly invisible on a
+   * scrimmed photograph, so these carry the dark theme's brass as a literal.
+   * Same reason the type over those surfaces uses literals rather than tokens.
+   */
+  .rule-brass-on-dark {
+    background: linear-gradient(
+      90deg,
+      #c9a15c 0%,
+      rgba(201, 161, 92, 0.25) 60%,
+      transparent 100%
+    );
+    height: 1px;
+  }
+
+  .text-brass-on-dark {
+    color: #c9a15c;
+  }
 }
 
 /* Reveal-on-scroll for BELOW-THE-FOLD content only. Elements start hidden
